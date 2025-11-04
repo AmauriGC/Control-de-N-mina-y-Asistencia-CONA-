@@ -1,0 +1,55 @@
+HELP.md
+# Maven build output
+target/
+
+# Maven Wrapper (recomendado comitear el jar)
+# .mvn/wrapper/maven-wrapper.jar
+
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### Env files ###
+.env
+.env.local
+!.env.example
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+
+### Logs ###
+logs/
+*.log
+
+### OS generated files ###
+.DS_Store
+Thumbs.db
+
+### Java / Misc ###
+*.class
+hs_err_pid*
+replay_pid*
