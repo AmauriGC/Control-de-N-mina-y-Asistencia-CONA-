@@ -84,7 +84,7 @@ git add .
 git add src/pages/admin/MiNuevaPagina.jsx
 
 # Hacer commit
-git commit -m "feat: añadir página de reportes"
+git commit -m "feat(reports): añadir página de reportes"
 ```
 
 **4. Subir tu rama**
