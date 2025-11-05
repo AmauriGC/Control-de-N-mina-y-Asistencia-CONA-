@@ -3,9 +3,9 @@ import Sidebar from "../shared/Sidebar";
 
 export default function DashboardLayout() {
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="flex w-screen h-screen">
       <Sidebar />
-      <main className="flex-1 p-6">
+      <main className="flex flex-1 p-4">
         <Outlet />
       </main>
     </div>

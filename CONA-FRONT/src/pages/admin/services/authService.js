@@ -1,4 +1,4 @@
-import api from '../../AxiosClient/axiosClient'
+import api from '../../../AxiosClient/axiosClient'
 
 const authService = {
 	async login(email, password) {

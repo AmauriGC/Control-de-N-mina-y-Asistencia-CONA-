@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
-import authService from "../auth/service/authService";
+import authService from "../pages/admin/services/authService";
 import { decodeJwt, isTokenExpired } from "../utils/jwt";
 
 const AuthContext = createContext(null);
