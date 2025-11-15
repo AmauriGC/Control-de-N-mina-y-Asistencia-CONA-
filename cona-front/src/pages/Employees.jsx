@@ -91,10 +91,13 @@ export default function EmployeesPage() {
   });
 
   const toggleEmployeeStatus = async (id) => {
-    const target = employees.find((e) => e.id === id)
-    const nextStatus = target?.status === "active" ? "inactivo" : "activo"
-    const ok = await alertConfig.confirm({ title: `¿Cambiar estado a ${nextStatus}?`, text: "Podrás revertirlo después." })
-    if (!ok) return
+    const target = employees.find((e) => e.id === id);
+    const nextStatus = target?.status === "active" ? "inactivo" : "activo";
+    const ok = await alertConfig.confirm({
+      title: `¿Cambiar estado a ${nextStatus}?`,
+      text: "Podrás revertirlo después.",
+    });
+    if (!ok) return;
     setEmployees((prev) =>
       prev.map((emp) => (emp.id === id ? { ...emp, status: emp.status === "active" ? "inactive" : "active" } : emp))
     );
@@ -149,27 +152,27 @@ export default function EmployeesPage() {
             {/* Contenido con scroll */}
             <div className="max-h-[75vh] overflow-y-auto px-6 py-5">
               <EmployeeForm
-              initialData={editingEmployee}
-              onSave={(data) => {
-                if (editingEmployee) {
-                  setEmployees((prev) => prev.map((e) => (e.id === editingEmployee.id ? { ...e, ...data } : e)));
-                  alertConfig.toastSuccess({ title: "Empleado actualizado", text: `${data.name} fue actualizado` });
-                } else {
-                  const newEmp = { id: String(Date.now()), status: "active", contractStatus: "active", ...data };
-                  setEmployees((prev) => [newEmp, ...prev]);
-                  alertConfig.toastSuccess({
-                    title: "Empleado registrado",
-                    text: `${data.name} ha sido agregado al sistema`,
-                  });
-                }
-                setIsDialogOpen(false);
-                setEditingEmployee(null);
-              }}
-              onClose={() => {
-                setIsDialogOpen(false);
-                setEditingEmployee(null);
-              }}
-            />
+                initialData={editingEmployee}
+                onSave={(data) => {
+                  if (editingEmployee) {
+                    setEmployees((prev) => prev.map((e) => (e.id === editingEmployee.id ? { ...e, ...data } : e)));
+                    alertConfig.toastSuccess({ title: "Empleado actualizado", text: `${data.name} fue actualizado` });
+                  } else {
+                    const newEmp = { id: String(Date.now()), status: "active", contractStatus: "active", ...data };
+                    setEmployees((prev) => [newEmp, ...prev]);
+                    alertConfig.toastSuccess({
+                      title: "Empleado registrado",
+                      text: `${data.name} ha sido agregado al sistema`,
+                    });
+                  }
+                  setIsDialogOpen(false);
+                  setEditingEmployee(null);
+                }}
+                onClose={() => {
+                  setIsDialogOpen(false);
+                  setEditingEmployee(null);
+                }}
+              />
             </div>
           </DialogContent>
         </Dialog>
@@ -326,7 +329,6 @@ export default function EmployeesPage() {
 }
 
 function EmployeeForm({ onClose, onSave, initialData }) {
-  
   const [formData, setFormData] = useState({
     employeeNumber: initialData?.employeeNumber || "",
     name: initialData?.name || "",
@@ -339,6 +341,16 @@ function EmployeeForm({ onClose, onSave, initialData }) {
     vacationDaysAvailable: initialData?.vacationDaysAvailable?.toString?.() || "12",
     contractStartDate: initialData?.contractStartDate || "",
     contractEndDate: initialData?.contractEndDate || "",
+    phone: initialData?.phone?.toString?.() || "",
+    rfc: initialData?.rfc || "",
+    hourlyPay: initialData?.hourlyPay?.toString?.() || "",
+    contractType: initialData?.contractType || "Temporal",
+    status: initialData?.status || "active",
+    bankData: {
+      bank: initialData?.bankData?.bank || "",
+      accountNumber: initialData?.bankData?.accountNumber || "",
+      clabe: initialData?.bankData?.clabe || "",
+    },
   });
 
   const nameField = useFieldValidation(
@@ -357,13 +369,35 @@ function EmployeeForm({ onClose, onSave, initialData }) {
       rulesLib.emailDomain(["utez.edu.mx", "cona.com"], "Solo dominios @utez.edu.mx o @cona.com")
     )
   );
+  const phoneField = useFieldValidation(
+    formData.phone || "",
+    makeRules(rulesLib.required("El teléfono es obligatorio"), rulesLib.phoneMX("El teléfono debe tener 10 dígitos"))
+  );
+  const rfcField = useFieldValidation(
+    formData.rfc || "",
+    makeRules(rulesLib.required("El RFC es obligatorio"), rulesLib.rfcMX("RFC inválido"))
+  );
   const salaryField = useFieldValidation(
     formData.weeklySalary || "",
     makeRules(rulesLib.required("Requerido"), rulesLib.positiveNumber("Debe ser un número positivo"))
   );
+  const hourlyPayField = useFieldValidation(
+    formData.hourlyPay || "",
+    makeRules(rulesLib.required("Requerido"), rulesLib.decimal2("Monto inválido, máx. 2 decimales"))
+  );
   const empNumberValid = String(formData.employeeNumber || "").trim().length > 0;
   const positionValid = String(formData.position || "").trim().length > 0;
   const departmentValid = String(formData.department || "").trim().length > 0;
+  const contractTypeValid = String(formData.contractType || "").trim().length > 0;
+  const bankNameValid = String(formData.bankData?.bank || "").trim().length > 0;
+  const accountField = useFieldValidation(
+    formData.bankData?.accountNumber || "",
+    makeRules(rulesLib.required("Requerido"), rulesLib.digitsBetween(10, 16, "Solo dígitos (10 a 16)"))
+  );
+  const clabeField = useFieldValidation(
+    formData.bankData?.clabe || "",
+    makeRules(rulesLib.required("Requerido"), rulesLib.clabe18("CLABE de 18 dígitos"))
+  );
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -373,11 +407,18 @@ function EmployeeForm({ onClose, onSave, initialData }) {
     if (
       !nameField.isValid ||
       !emailField.isValid ||
+      !phoneField.isValid ||
+      !rfcField.isValid ||
       !salaryField.isValid ||
+      !hourlyPayField.isValid ||
       !empNumberValid ||
       !positionValid ||
       !departmentValid ||
-      !formData.contractStartDate
+      !formData.contractStartDate ||
+      !contractTypeValid ||
+      !bankNameValid ||
+      !accountField.isValid ||
+      !clabeField.isValid
     ) {
       alertConfig.toastError({ title: "Faltan datos", text: "Revisa los campos con error" });
       return;
@@ -391,13 +432,23 @@ function EmployeeForm({ onClose, onSave, initialData }) {
         name: nameField.value,
         email: emailField.value,
         role: formData.role,
+        phone: phoneField.value,
+        rfc: rfcField.value?.toUpperCase?.(),
         position: formData.position,
         department: formData.department,
         schedule: formData.schedule,
         weeklySalary: Number(salaryField.value),
+        hourlyPay: Number(String(hourlyPayField.value).replace(",", ".")),
+        contractType: formData.contractType,
+        status: formData.status,
         vacationDaysAvailable: Number(formData.vacationDaysAvailable || 0),
         contractStartDate: formData.contractStartDate,
         contractEndDate: formData.contractEndDate,
+        bankData: {
+          bank: formData.bankData?.bank,
+          accountNumber: accountField.value,
+          clabe: clabeField.value,
+        },
       };
       onSave?.(payload);
     } finally {
@@ -440,6 +491,37 @@ function EmployeeForm({ onClose, onSave, initialData }) {
             onChange={emailField.onChange}
             onBlur={emailField.onBlur}
             aria-invalid={emailField.showError && !!emailField.error}
+            disabled={submitting}
+          />
+        </Field>
+        <Field label="Teléfono *" htmlFor="phone" error={phoneField.error} showError={phoneField.showError}>
+          <Input
+            id="phone"
+            placeholder="5512345678"
+            value={phoneField.value}
+            onChange={(e) => {
+              phoneField.onChange(e);
+              setFormData({ ...formData, phone: e.target.value });
+            }}
+            onBlur={phoneField.onBlur}
+            aria-invalid={phoneField.showError && !!phoneField.error}
+            disabled={submitting}
+          />
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="RFC *" htmlFor="rfc" error={rfcField.error} showError={rfcField.showError}>
+          <Input
+            id="rfc"
+            placeholder="GODE561231GR8"
+            value={rfcField.value}
+            onChange={(e) => {
+              rfcField.onChange(e);
+              setFormData({ ...formData, rfc: e.target.value });
+            }}
+            onBlur={rfcField.onBlur}
+            aria-invalid={rfcField.showError && !!rfcField.error}
             disabled={submitting}
           />
         </Field>
@@ -494,6 +576,41 @@ function EmployeeForm({ onClose, onSave, initialData }) {
             disabled={submitting}
           />
         </div>
+        <Field label="Tipo de Contrato *" htmlFor="contractType">
+          <Select
+            value={formData.contractType}
+            onValueChange={(value) => setFormData({ ...formData, contractType: value })}
+            disabled={submitting}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Selecciona" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Temporal">Temporal</SelectItem>
+              <SelectItem value="Indefinido">Indefinido</SelectItem>
+            </SelectContent>
+          </Select>
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Field
+          label="Pago por hora (MXN) *"
+          htmlFor="hourlyPay"
+          error={hourlyPayField.error}
+          showError={hourlyPayField.showError}
+        >
+          <Input
+            id="hourlyPay"
+            inputMode="decimal"
+            placeholder="100.00"
+            value={hourlyPayField.value}
+            onChange={hourlyPayField.onChange}
+            onBlur={hourlyPayField.onBlur}
+            aria-invalid={hourlyPayField.showError && !!hourlyPayField.error}
+            disabled={submitting}
+          />
+        </Field>
         <Field
           label="Salario Semanal (MXN) *"
           htmlFor="weeklySalary"
@@ -544,6 +661,74 @@ function EmployeeForm({ onClose, onSave, initialData }) {
         />
       </div>
 
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="status">Estatus</Label>
+          <Select
+            value={formData.status}
+            onValueChange={(value) => setFormData({ ...formData, status: value })}
+            disabled={submitting}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Activo</SelectItem>
+              <SelectItem value="inactive">Inactivo</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="bank">Banco *</Label>
+          <Input
+            id="bank"
+            placeholder="BBVA"
+            value={formData.bankData.bank}
+            onChange={(e) => setFormData({ ...formData, bankData: { ...formData.bankData, bank: e.target.value } })}
+            disabled={submitting}
+            aria-invalid={!bankNameValid}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <Field
+          label="Número de Cuenta *"
+          htmlFor="accountNumber"
+          error={accountField.error}
+          showError={accountField.showError}
+        >
+          <Input
+            id="accountNumber"
+            inputMode="numeric"
+            placeholder="0123456789"
+            value={accountField.value}
+            onChange={(e) => {
+              accountField.onChange(e);
+              setFormData({ ...formData, bankData: { ...formData.bankData, accountNumber: e.target.value } });
+            }}
+            onBlur={accountField.onBlur}
+            aria-invalid={accountField.showError && !!accountField.error}
+            disabled={submitting}
+          />
+        </Field>
+        <Field label="CLABE (18) *" htmlFor="clabe" error={clabeField.error} showError={clabeField.showError}>
+          <Input
+            id="clabe"
+            inputMode="numeric"
+            placeholder="123456789012345678"
+            value={clabeField.value}
+            onChange={(e) => {
+              clabeField.onChange(e);
+              setFormData({ ...formData, bankData: { ...formData.bankData, clabe: e.target.value } });
+            }}
+            onBlur={clabeField.onBlur}
+            aria-invalid={clabeField.showError && !!clabeField.error}
+            disabled={submitting}
+          />
+        </Field>
+      </div>
+
       <div className="flex justify-end gap-3">
         <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>
           Cancelar
@@ -555,11 +740,18 @@ function EmployeeForm({ onClose, onSave, initialData }) {
             submitting ||
             !nameField.isValid ||
             !emailField.isValid ||
+            !phoneField.isValid ||
+            !rfcField.isValid ||
             !salaryField.isValid ||
+            !hourlyPayField.isValid ||
             !empNumberValid ||
             !positionValid ||
             !departmentValid ||
-            !formData.contractStartDate
+            !formData.contractStartDate ||
+            !contractTypeValid ||
+            !bankNameValid ||
+            !accountField.isValid ||
+            !clabeField.isValid
           }
         >
           {initialData ? "Actualizar Empleado" : submitting ? "Registrando..." : "Registrar Empleado"}
