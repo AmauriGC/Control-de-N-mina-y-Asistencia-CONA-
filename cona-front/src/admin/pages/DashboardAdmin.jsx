@@ -1,41 +1,50 @@
-"use client"
-
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Users, Clock, DollarSign, AlertTriangle, FileText, Calendar } from 'lucide-react'
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
-import { Link } from 'react-router-dom'
-import { useAuth } from '@/lib/auth-context'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Users, Clock, DollarSign, AlertTriangle, FileText, Calendar } from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/auth/context/AuthContext";
 
 const attendanceData = [
-  { day: 'Lun', present: 45, late: 5, absent: 2 },
-  { day: 'Mar', present: 47, late: 3, absent: 2 },
-  { day: 'Mié', present: 46, late: 4, absent: 2 },
-  { day: 'Jue', present: 48, late: 2, absent: 2 },
-  { day: 'Vie', present: 44, late: 6, absent: 2 },
-]
+  { day: "Lun", present: 45, late: 5, absent: 2 },
+  { day: "Mar", present: 47, late: 3, absent: 2 },
+  { day: "Mié", present: 46, late: 4, absent: 2 },
+  { day: "Jue", present: 48, late: 2, absent: 2 },
+  { day: "Vie", present: 44, late: 6, absent: 2 },
+];
 
 const overtimeData = [
-  { week: 'Sem 1', hours: 24 },
-  { week: 'Sem 2', hours: 32 },
-  { week: 'Sem 3', hours: 28 },
-  { week: 'Sem 4', hours: 36 },
-]
+  { week: "Sem 1", hours: 24 },
+  { week: "Sem 2", hours: 32 },
+  { week: "Sem 3", hours: 28 },
+  { week: "Sem 4", hours: 36 },
+];
 
 const pendingJustifications = [
-  { id: '1', employee: 'María Empleada', date: '2024-01-15', daysLeft: 1 },
-  { id: '2', employee: 'Juan Pérez', date: '2024-01-16', daysLeft: 0 },
-  { id: '3', employee: 'Ana García', date: '2024-01-14', daysLeft: 2 },
-]
+  { id: "1", employee: "María Empleada", date: "2024-01-15", daysLeft: 1 },
+  { id: "2", employee: "Juan Pérez", date: "2024-01-16", daysLeft: 0 },
+  { id: "3", employee: "Ana García", date: "2024-01-14", daysLeft: 2 },
+];
 
 const contractAlerts = [
-  { id: '1', employee: 'Carlos Martínez', endDate: '2024-02-15', daysLeft: 15, priority: 'high' },
-  { id: '2', employee: 'Laura Rodríguez', endDate: '2024-02-28', daysLeft: 28, priority: 'medium' },
-]
+  { id: "1", employee: "Carlos Martínez", endDate: "2024-02-15", daysLeft: 15, priority: "high" },
+  { id: "2", employee: "Laura Rodríguez", endDate: "2024-02-28", daysLeft: 28, priority: "medium" },
+];
 
 export default function DashboardAdmin() {
-  const { user } = useAuth()
+  const { user } = useAuth();
   return (
     <div className="p-8 space-y-8 min-h-screen">
       <div>
@@ -108,8 +117,8 @@ export default function DashboardAdmin() {
                   <p className="text-sm text-muted-foreground">Falta del {item.date}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Badge variant={item.daysLeft === 0 ? 'destructive' : 'secondary'}>
-                    {item.daysLeft === 0 ? 'Último día' : `${item.daysLeft} días`}
+                  <Badge variant={item.daysLeft === 0 ? "destructive" : "secondary"}>
+                    {item.daysLeft === 0 ? "Último día" : `${item.daysLeft} días`}
                   </Badge>
                   <Link to="/dashboard/justifications/admin">
                     <Button size="sm">Revisar</Button>
@@ -118,7 +127,9 @@ export default function DashboardAdmin() {
               </div>
             ))}
             <Link to="/dashboard/justifications/admin">
-              <Button variant="outline" className="w-full">Ver todas las justificaciones</Button>
+              <Button variant="outline" className="w-full">
+                Ver todas las justificaciones
+              </Button>
             </Link>
           </CardContent>
         </Card>
@@ -141,9 +152,7 @@ export default function DashboardAdmin() {
                   <p className="text-sm text-muted-foreground">Vence el {item.endDate}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Badge variant={item.priority === 'high' ? 'destructive' : 'secondary'}>
-                    {item.daysLeft} días
-                  </Badge>
+                  <Badge variant={item.priority === "high" ? "destructive" : "secondary"}>{item.daysLeft} días</Badge>
                   <Link to="/dashboard/employees">
                     <Button size="sm">Ver</Button>
                   </Link>
@@ -151,7 +160,9 @@ export default function DashboardAdmin() {
               </div>
             ))}
             <Link to="/dashboard/employees">
-              <Button variant="outline" className="w-full">Ver todos los empleados</Button>
+              <Button variant="outline" className="w-full">
+                Ver todos los empleados
+              </Button>
             </Link>
           </CardContent>
         </Card>
@@ -199,5 +210,5 @@ export default function DashboardAdmin() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

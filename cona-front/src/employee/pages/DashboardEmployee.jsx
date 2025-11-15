@@ -1,11 +1,9 @@
-"use client"
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Clock, Calendar, AlertTriangle, FileText } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { useAuth } from '@/lib/auth-context'
+import { useAuth } from '@/auth/context/AuthContext'
 
 export default function DashboardEmployee() {
   const { user } = useAuth()

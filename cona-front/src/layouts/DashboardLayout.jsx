@@ -1,8 +1,6 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation, Link, Outlet } from "react-router-dom";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/auth/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Clock, Users, FileText, Calendar, Settings, LogOut, ClipboardList, Menu } from "lucide-react";
