@@ -34,7 +34,12 @@ axiosClient.interceptors.response.use(
 
       if (status === 401 || status === 403) {
         tokenManager.clearAll();
-        window.location.href = "/login";
+        const requestUrl = error.config?.url || "";
+        const isAuthLogin = requestUrl.includes("/auth/login");
+        const isOnLoginPage = window.location.pathname === "/login";
+        if (!isAuthLogin && !isOnLoginPage) {
+          window.location.assign("/login");
+        }
       }
 
       return Promise.reject({
