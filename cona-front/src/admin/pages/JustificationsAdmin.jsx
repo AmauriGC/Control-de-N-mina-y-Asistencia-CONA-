@@ -1,67 +1,78 @@
-"use client"
+"use client";
 
-import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Clock, CheckCircle, XCircle, FileText, Eye } from 'lucide-react'
-import { alertConfig } from '@/lib/alert-config'
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Clock, CheckCircle, XCircle, FileText, Eye } from "lucide-react";
+import { alertConfig } from "@/lib/alert-config";
+import { useFieldValidation } from "@/components/criteria/use-validation";
+import { justificationReviewRules } from "@/components/criteria/criteria";
 
 const mockJustifications = [
   {
-    id: '1',
-    employeeId: 'E002',
-    employeeName: 'María Empleada',
-    date: '2024-01-16',
-    documentType: 'Certificado Médico',
-    comments: 'Cita médica programada',
-    status: 'pending',
-    submittedAt: '2024-01-17 10:30',
+    id: "1",
+    employeeId: "E002",
+    employeeName: "María Empleada",
+    date: "2024-01-16",
+    documentType: "Certificado Médico",
+    comments: "Cita médica programada",
+    status: "pending",
+    submittedAt: "2024-01-17 10:30",
   },
   {
-    id: '2',
-    employeeId: 'E003',
-    employeeName: 'Juan Pérez',
-    date: '2024-01-16',
-    documentType: 'Permiso Personal',
-    comments: 'Asunto familiar urgente',
-    status: 'pending',
-    submittedAt: '2024-01-17 09:15',
+    id: "2",
+    employeeId: "E003",
+    employeeName: "Juan Pérez",
+    date: "2024-01-16",
+    documentType: "Permiso Personal",
+    comments: "Asunto familiar urgente",
+    status: "pending",
+    submittedAt: "2024-01-17 09:15",
   },
-]
+];
 
 export default function JustificationsAdmin() {
-  const [justifications, setJustifications] = useState(mockJustifications)
-  const [selected, setSelected] = useState(null)
-  const [open, setOpen] = useState(false)
-  
+  const [justifications, setJustifications] = useState(mockJustifications);
+  const [selected, setSelected] = useState(null);
+  const [open, setOpen] = useState(false);
 
-  const pendingCount = justifications.filter((j) => j.status === 'pending').length
+  const pendingCount = justifications.filter((j) => j.status === "pending").length;
 
   const handleReview = (j) => {
-    setSelected(j)
-    setOpen(true)
-  }
+    setSelected(j);
+    setOpen(true);
+  };
 
   const handleApprove = async (id, comments) => {
-    const ok = await alertConfig.confirm({ title: '¿Aprobar justificación?', text: 'Esta acción marcará la falta como justificada.' })
-    if (!ok) return
-    setJustifications((prev) => prev.map((j) => (j.id === id ? { ...j, status: 'approved', reviewComments: comments } : j)))
-    await alertConfig.toastSuccess({ title: 'Justificación aprobada', text: 'Marcada como justificada' })
-    setOpen(false)
-  }
+    const ok = await alertConfig.confirm({
+      title: "¿Aprobar justificación?",
+      text: "Esta acción marcará la falta como justificada.",
+    });
+    if (!ok) return;
+    setJustifications((prev) =>
+      prev.map((j) => (j.id === id ? { ...j, status: "approved", reviewComments: comments } : j))
+    );
+    await alertConfig.toastSuccess({ title: "Justificación aprobada", text: "Marcada como justificada" });
+    setOpen(false);
+  };
 
   const handleReject = async (id, comments) => {
-    const ok = await alertConfig.confirm({ title: '¿Rechazar justificación?', text: 'La falta se mantendrá sin justificar.' })
-    if (!ok) return
-    setJustifications((prev) => prev.map((j) => (j.id === id ? { ...j, status: 'rejected', reviewComments: comments } : j)))
-    await alertConfig.toastInfo({ title: 'Justificación rechazada', text: 'La falta permanece sin justificar' })
-    setOpen(false)
-  }
+    const ok = await alertConfig.confirm({
+      title: "¿Rechazar justificación?",
+      text: "La falta se mantendrá sin justificar.",
+    });
+    if (!ok) return;
+    setJustifications((prev) =>
+      prev.map((j) => (j.id === id ? { ...j, status: "rejected", reviewComments: comments } : j))
+    );
+    await alertConfig.toastInfo({ title: "Justificación rechazada", text: "La falta permanece sin justificar" });
+    setOpen(false);
+  };
 
   return (
     <div className="p-8 space-y-6 min-h-screen">
@@ -114,31 +125,31 @@ export default function JustificationsAdmin() {
                     <TableCell>
                       <Badge
                         variant={
-                          just.status === 'approved'
-                            ? 'default'
-                            : just.status === 'rejected'
-                            ? 'destructive'
-                            : 'secondary'
+                          just.status === "approved"
+                            ? "default"
+                            : just.status === "rejected"
+                            ? "destructive"
+                            : "secondary"
                         }
                       >
-                        {just.status === 'pending' && <Clock className="h-3 w-3 mr-1" />}
-                        {just.status === 'approved' && <CheckCircle className="h-3 w-3 mr-1" />}
-                        {just.status === 'rejected' && <XCircle className="h-3 w-3 mr-1" />}
-                        {just.status === 'pending'
-                          ? 'Pendiente'
-                          : just.status === 'approved'
-                          ? 'Aprobado'
-                          : 'Rechazado'}
+                        {just.status === "pending" && <Clock className="h-3 w-3 mr-1" />}
+                        {just.status === "approved" && <CheckCircle className="h-3 w-3 mr-1" />}
+                        {just.status === "rejected" && <XCircle className="h-3 w-3 mr-1" />}
+                        {just.status === "pending"
+                          ? "Pendiente"
+                          : just.status === "approved"
+                          ? "Aprobado"
+                          : "Rechazado"}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <Button
                         size="sm"
-                        variant={just.status === 'pending' ? 'default' : 'outline'}
+                        variant={just.status === "pending" ? "default" : "outline"}
                         onClick={() => handleReview(just)}
                       >
                         <Eye className="h-4 w-4 mr-1" />
-                        {just.status === 'pending' ? 'Revisar' : 'Ver'}
+                        {just.status === "pending" ? "Revisar" : "Ver"}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -168,11 +179,12 @@ export default function JustificationsAdmin() {
         </Dialog>
       )}
     </div>
-  )
+  );
 }
 
 function ReviewForm({ justification, onApprove, onReject, onClose }) {
-  const [comments, setComments] = useState('')
+  const [comments, setComments] = useState("");
+  const commentsField = useFieldValidation(comments, justificationReviewRules);
   return (
     <div className="space-y-6">
       <div className="space-y-4 p-4 rounded-lg border border-border bg-gradient-to-br from-primary/10 via-background to-background shadow-xs">
@@ -188,7 +200,7 @@ function ReviewForm({ justification, onApprove, onReject, onClose }) {
         </div>
         <div>
           <p className="text-sm text-muted-foreground">Comentarios del Empleado</p>
-          <p className="font-medium">{justification.comments || 'Sin comentarios'}</p>
+          <p className="font-medium">{justification.comments || "Sin comentarios"}</p>
         </div>
         <div>
           <p className="text-sm text-muted-foreground mb-2">Documento Adjunto</p>
@@ -199,17 +211,28 @@ function ReviewForm({ justification, onApprove, onReject, onClose }) {
         </div>
       </div>
 
-      {justification.status === 'pending' ? (
+      {justification.status === "pending" ? (
         <>
           <div className="space-y-2">
             <Label htmlFor="adminComments">Comentarios de Revisión *</Label>
             <Textarea
               id="adminComments"
               placeholder="Agrega comentarios sobre tu decisión..."
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
+              value={commentsField.value}
+              onChange={(e) => {
+                setComments(e.target.value);
+                commentsField.onChange(e);
+              }}
+              onBlur={commentsField.onBlur}
+              aria-invalid={commentsField.showError && !!commentsField.error}
               rows={3}
             />
+            {commentsField.showError && commentsField.error && (
+              <p className="text-xs text-destructive">{commentsField.error}</p>
+            )}
+            {!commentsField.showError && commentsField.value.trim().length > 0 && (
+              <p className="text-xs text-muted-foreground">{commentsField.value.trim().length}/300</p>
+            )}
           </div>
           <div className="flex justify-end gap-3">
             <Button variant="outline" onClick={onClose}>
@@ -217,13 +240,13 @@ function ReviewForm({ justification, onApprove, onReject, onClose }) {
             </Button>
             <Button
               variant="destructive"
-              onClick={() => onReject(justification.id, comments)}
-              disabled={!comments.trim()}
+              onClick={() => onReject(justification.id, commentsField.value)}
+              disabled={!commentsField.isValid}
             >
               <XCircle className="h-4 w-4 mr-2" />
               Rechazar
             </Button>
-            <Button onClick={() => onApprove(justification.id, comments)} disabled={!comments.trim()}>
+            <Button onClick={() => onApprove(justification.id, commentsField.value)} disabled={!commentsField.isValid}>
               <CheckCircle className="h-4 w-4 mr-2" />
               Aprobar
             </Button>
@@ -241,5 +264,5 @@ function ReviewForm({ justification, onApprove, onReject, onClose }) {
         </div>
       )}
     </div>
-  )
+  );
 }

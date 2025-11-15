@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import Field from "@/components/ui/field";
-import { useFieldValidation, makeRules, rulesLib } from "@/hooks/use-validation";
+import { useFieldValidation, makeRules, rulesLib } from "@/components/criteria/use-validation";
 import { alertConfig } from "@/lib/alert-config";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -357,15 +357,18 @@ function EmployeeForm({ onClose, onSave, initialData }) {
     formData.name || "",
     makeRules(
       rulesLib.required("El nombre es obligatorio"),
-      rulesLib.startsWithUpper("El nombre debe de empezar con mayúscula"),
-      rulesLib.onlyLettersAndSpaces("El nombre debe ser solamente letras")
+      rulesLib.onlyLettersAndSpaces("El nombre debe ser solamente letras"),
+      rulesLib.startsWithUpper("El nombre debe de empezar con mayúscula")
     )
+  );
+  const empNumberField = useFieldValidation(
+    formData.employeeNumber || "",
+    makeRules(rulesLib.required("Requerido"), rulesLib.onlyNumbers("Solo números"))
   );
   const emailField = useFieldValidation(
     formData.email || "",
     makeRules(
       rulesLib.required("El correo es obligatorio"),
-      rulesLib.email("Correo electrónico inválido"),
       rulesLib.emailDomain(["utez.edu.mx", "cona.com"], "Solo dominios @utez.edu.mx o @cona.com")
     )
   );
@@ -385,18 +388,44 @@ function EmployeeForm({ onClose, onSave, initialData }) {
     formData.hourlyPay || "",
     makeRules(rulesLib.required("Requerido"), rulesLib.decimal2("Monto inválido, máx. 2 decimales"))
   );
-  const empNumberValid = String(formData.employeeNumber || "").trim().length > 0;
-  const positionValid = String(formData.position || "").trim().length > 0;
-  const departmentValid = String(formData.department || "").trim().length > 0;
+  const positionField = useFieldValidation(
+    formData.position || "",
+    makeRules(
+      rulesLib.required("Requerido"),
+      rulesLib.onlyLettersAndSpaces("Solo letras"),
+      rulesLib.startsWithUpper("Debe iniciar con mayúscula")
+    )
+  );
+  const departmentField = useFieldValidation(
+    formData.department || "",
+    makeRules(
+      rulesLib.required("Requerido"),
+      rulesLib.onlyLettersAndSpaces("Solo letras"),
+      rulesLib.startsWithUpper("Debe iniciar con mayúscula")
+    )
+  );
   const contractTypeValid = String(formData.contractType || "").trim().length > 0;
-  const bankNameValid = String(formData.bankData?.bank || "").trim().length > 0;
+  const bankField = useFieldValidation(
+    formData.bankData?.bank || "",
+    makeRules(rulesLib.required("Requerido"), rulesLib.onlyLettersAndSpaces("Solo letras y espacios"))
+  );
   const accountField = useFieldValidation(
     formData.bankData?.accountNumber || "",
-    makeRules(rulesLib.required("Requerido"), rulesLib.digitsBetween(10, 16, "Solo dígitos (10 a 16)"))
+    makeRules(
+      rulesLib.required("Requerido"),
+      rulesLib.onlyNumbers("Solo números"),
+      rulesLib.minDigits(10, "Mínimo 10 dígitos"),
+      rulesLib.maxDigits(16, "Máximo 16 dígitos")
+    )
   );
   const clabeField = useFieldValidation(
     formData.bankData?.clabe || "",
-    makeRules(rulesLib.required("Requerido"), rulesLib.clabe18("CLABE de 18 dígitos"))
+    makeRules(
+      rulesLib.required("Requerido"),
+      rulesLib.onlyNumbers("Solo números"),
+      rulesLib.minDigits(18, "Debe tener 18 dígitos"),
+      rulesLib.maxDigits(18, "Debe tener exactamente 18 dígitos")
+    )
   );
 
   const [submitting, setSubmitting] = useState(false);
@@ -434,8 +463,8 @@ function EmployeeForm({ onClose, onSave, initialData }) {
         role: formData.role,
         phone: phoneField.value,
         rfc: rfcField.value?.toUpperCase?.(),
-        position: formData.position,
-        department: formData.department,
+        position: positionField.value,
+        department: departmentField.value,
         schedule: formData.schedule,
         weeklySalary: Number(salaryField.value),
         hourlyPay: Number(String(hourlyPayField.value).replace(",", ".")),
@@ -445,7 +474,7 @@ function EmployeeForm({ onClose, onSave, initialData }) {
         contractStartDate: formData.contractStartDate,
         contractEndDate: formData.contractEndDate,
         bankData: {
-          bank: formData.bankData?.bank,
+          bank: bankField.value,
           accountNumber: accountField.value,
           clabe: clabeField.value,
         },
@@ -459,12 +488,17 @@ function EmployeeForm({ onClose, onSave, initialData }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Número de Empleado *" htmlFor="employeeNumber">
+        <Field label="Número de Empleado *" htmlFor="employeeNumber" error={empNumberField.error} showError={empNumberField.showError}>
           <Input
             id="employeeNumber"
             placeholder="E001"
-            value={formData.employeeNumber}
-            onChange={(e) => setFormData({ ...formData, employeeNumber: e.target.value.toUpperCase() })}
+            value={empNumberField.value}
+            onChange={(e) => {
+              empNumberField.onChange(e);
+              setFormData({ ...formData, employeeNumber: e.target.value });
+            }}
+            onBlur={empNumberField.onBlur}
+            aria-invalid={empNumberField.showError && !!empNumberField.error}
             disabled={submitting}
           />
         </Field>
@@ -544,26 +578,39 @@ function EmployeeForm({ onClose, onSave, initialData }) {
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="position">Puesto *</Label>
+        <Field label="Puesto *" htmlFor="position" error={positionField.error} showError={positionField.showError}>
           <Input
             id="position"
             placeholder="Operador"
-            value={formData.position}
-            onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+            value={positionField.value}
+            onChange={(e) => {
+              positionField.onChange(e);
+              setFormData({ ...formData, position: e.target.value });
+            }}
+            onBlur={positionField.onBlur}
+            aria-invalid={positionField.showError && !!positionField.error}
             disabled={submitting}
           />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="department">Departamento *</Label>
+        </Field>
+        <Field
+          label="Departamento *"
+          htmlFor="department"
+          error={departmentField.error}
+          showError={departmentField.showError}
+        >
           <Input
             id="department"
             placeholder="Producción"
-            value={formData.department}
-            onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+            value={departmentField.value}
+            onChange={(e) => {
+              departmentField.onChange(e);
+              setFormData({ ...formData, department: e.target.value });
+            }}
+            onBlur={departmentField.onBlur}
+            aria-invalid={departmentField.showError && !!departmentField.error}
             disabled={submitting}
           />
-        </div>
+        </Field>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -678,17 +725,20 @@ function EmployeeForm({ onClose, onSave, initialData }) {
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="bank">Banco *</Label>
+        <Field label="Banco *" htmlFor="bank" error={bankField.error} showError={bankField.showError}>
           <Input
             id="bank"
             placeholder="BBVA"
-            value={formData.bankData.bank}
-            onChange={(e) => setFormData({ ...formData, bankData: { ...formData.bankData, bank: e.target.value } })}
+            value={bankField.value}
+            onChange={(e) => {
+              bankField.onChange(e);
+              setFormData({ ...formData, bankData: { ...formData.bankData, bank: e.target.value } });
+            }}
+            onBlur={bankField.onBlur}
+            aria-invalid={bankField.showError && !!bankField.error}
             disabled={submitting}
-            aria-invalid={!bankNameValid}
           />
-        </div>
+        </Field>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -744,12 +794,12 @@ function EmployeeForm({ onClose, onSave, initialData }) {
             !rfcField.isValid ||
             !salaryField.isValid ||
             !hourlyPayField.isValid ||
-            !empNumberValid ||
-            !positionValid ||
-            !departmentValid ||
+            !empNumberField.isValid ||
+            !positionField.isValid ||
+            !departmentField.isValid ||
             !formData.contractStartDate ||
             !contractTypeValid ||
-            !bankNameValid ||
+            !bankField.isValid ||
             !accountField.isValid ||
             !clabeField.isValid
           }

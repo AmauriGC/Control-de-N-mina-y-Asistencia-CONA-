@@ -12,6 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Upload, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { alertConfig } from "@/lib/alert-config";
+import { useFieldValidation } from "@/components/criteria/use-validation";
+import { rulesLib } from "@/components/criteria/criteria";
 
 const mockAbsences = [
   { id: "1", date: "2024-01-15", status: "absent", daysLeft: 1 },
@@ -155,6 +157,12 @@ export default function JustificationsEmployee() {
 function JustificationForm({ absence, onClose }) {
   const [formData, setFormData] = useState({ documentType: "", comments: "", file: null });
 
+  const commentField = useFieldValidation(formData.comments, [
+    rulesLib.optional(rulesLib.minLength(5, "Mínimo 5 caracteres")),
+    rulesLib.optional(rulesLib.maxLength(300, "Máximo 300 caracteres")),
+    rulesLib.optional(rulesLib.textGeneral("Caracteres no permitidos")),
+  ]);
+
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       const f = e.target.files[0];
@@ -179,6 +187,10 @@ function JustificationForm({ absence, onClose }) {
         title: "Campos requeridos",
         text: "Completa todos los campos y sube un documento",
       });
+      return;
+    }
+    if (commentField.value.trim().length > 0 && !commentField.isValid) {
+      await alertConfig.toastError({ title: "Comentarios inválidos", text: commentField.error });
       return;
     }
     await alertConfig.toastSuccess({
@@ -228,21 +240,34 @@ function JustificationForm({ absence, onClose }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="comments">Comentarios</Label>
+        <Label htmlFor="comments">Comentarios (opcional)</Label>
         <Textarea
           id="comments"
           placeholder="Agrega detalles adicionales..."
-          value={formData.comments}
-          onChange={(e) => setFormData({ ...formData, comments: e.target.value })}
+          value={commentField.value}
+          onChange={(e) => {
+            commentField.onChange(e);
+            setFormData({ ...formData, comments: e.target.value });
+          }}
+          onBlur={commentField.onBlur}
           rows={3}
         />
+        {commentField.showError && <p className="text-xs text-destructive">{commentField.error}</p>}
+        {commentField.value.trim().length > 0 && !commentField.showError && (
+          <p className="text-xs text-muted-foreground">{commentField.value.trim().length}/300</p>
+        )}
       </div>
 
       <div className="flex justify-end gap-3">
         <Button type="button" variant="outline" onClick={onClose}>
           Cancelar
         </Button>
-        <Button type="submit" disabled={!formData.documentType || !formData.file}>
+        <Button
+          type="submit"
+          disabled={
+            !formData.documentType || !formData.file || (commentField.value.trim().length > 0 && !commentField.isValid)
+          }
+        >
           Enviar Justificación
         </Button>
       </div>
