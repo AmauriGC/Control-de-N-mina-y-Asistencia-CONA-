@@ -1,0 +1,42 @@
+@theme inline {
+  --font-sans: "Montserrat", sans-serif;
+  --color-background: #f9fafa;
+  --color-foreground: #090c0b;
+  --color-card: #ffffff;
+  --color-card-foreground: #090c0b;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #090c0b;
+  --color-primary: #709486;
+  --color-primary-foreground: #f9fafa;
+  --color-secondary: #afc2c3;
+  --color-secondary-foreground: #090c0b;
+  --color-muted: #91a8ad;
+  --color-muted-foreground: #090c0b;
+  --color-accent: #709486;
+  --color-accent-foreground: #f9fafa;
+  --color-destructive: #dc2626;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #afc2c3;
+  --color-input: #afc2c3;
+  --color-ring: #709486;
+  --radius-lg: 0.5rem;
+}
+
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+  * {
+    @apply border-border;
+  }
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
