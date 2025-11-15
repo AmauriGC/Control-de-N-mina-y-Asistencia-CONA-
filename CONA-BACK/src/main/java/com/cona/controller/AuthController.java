@@ -20,14 +20,14 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthResponse>> login(@Valid @RequestBody AuthRequest reqBody, HttpServletRequest request) {
+    public ApiResponse<AuthResponse> login(@Valid @RequestBody AuthRequest reqBody, HttpServletRequest request) {
         AuthResponse data = authService.login(reqBody);
-        return ResponseEntity.ok(new ApiResponse<>(true, "OK", data, request.getRequestURI()));
+        return new ApiResponse<>(true, "OK", data, request.getRequestURI());
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<String>> register(@Valid @RequestBody AuthRequest reqBody, @RequestParam(defaultValue = "EMPLOYEE") String role, HttpServletRequest request) {
+    public ApiResponse<String> register(@Valid @RequestBody AuthRequest reqBody, @RequestParam(defaultValue = "EMPLOYEE") String role, HttpServletRequest request) {
         authService.register(reqBody, role);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Usuario creado", "OK", request.getRequestURI()));
+        return new ApiResponse<>(true, "Usuario creado", "OK", request.getRequestURI());
     }
 }
