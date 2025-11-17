@@ -1,5 +1,6 @@
 package com.cona.security;
 
+import com.cona.modules.auth.service.CustomUserDetailsService;
 import com.cona.security.jwt.JwtAuthenticationFilter;
 import com.cona.security.jwt.JwtTokenProvider;
 import org.springframework.context.annotation.Bean;

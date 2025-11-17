@@ -43,6 +43,20 @@ public class JwtTokenProvider {
         return builder.compact();
     }
 
+    public String generateToken(String username, Map<String, Object> extraClaims) {
+        Date now = new Date();
+        Date exp = new Date(now.getTime() + expirationMs);
+        JwtBuilder builder = Jwts.builder()
+                .setSubject(username)
+                .setIssuedAt(now)
+                .setExpiration(exp)
+                .signWith(key, SignatureAlgorithm.HS256);
+        if (extraClaims != null && !extraClaims.isEmpty()) {
+            builder.addClaims(extraClaims);
+        }
+        return builder.compact();
+    }
+
     public String getUsername(String token) {
         return Jwts.parserBuilder().setSigningKey(key).build()
                 .parseClaimsJws(token).getBody().getSubject();
