@@ -1,9 +1,9 @@
 package com.cona.kernel.initializer;
 
-import com.cona.entity.User;
-import com.cona.enums.Role;
+import com.cona.modules.auth.enums.Role;
 import com.cona.kernel.utils.Sanitizer;
-import com.cona.repository.UserRepository;
+import com.cona.modules.auth.entity.User;
+import com.cona.modules.auth.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
