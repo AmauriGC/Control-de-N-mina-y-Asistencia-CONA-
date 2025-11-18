@@ -1,38 +1,34 @@
-import {useEffect, useState} from "react";
-import {Link, useNavigate, useSearchParams} from "react-router-dom";
+import {useState} from "react";
+import {useNavigate} from "react-router-dom";
 import {Button} from "@/components/ui/button";
 import {Input} from "@/components/ui/input";
 import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
+import {useAuth} from "@/auth/context/AuthContext";
 import {authService} from "@/auth/services/authService";
 import {alertConfig} from "@/lib/alert-config";
 import logo from "@/assets/CONA.png";
 import {makeRules, passwordValidationRules, rulesLib, useFieldValidation} from "@/components/criteria/use-validation";
 import {VALIDATION_MESSAGES} from "@/lib/validations";
 
-export default function ResetPasswordPage() {
-    const [searchParams] = useSearchParams();
+export default function ChangePasswordPage() {
+    const {isAuthenticated, logout} = useAuth();
     const navigate = useNavigate();
-    const token = searchParams.get("token");
 
+    const currentPasswordField = useFieldValidation("", makeRules(rulesLib.required("La contraseña actual es obligatoria")));
     const newPasswordField = useFieldValidation("", makeRules(rulesLib.required("La nueva contraseña es obligatoria"), ...passwordValidationRules));
-    const confirmPasswordField = useFieldValidation("", makeRules(
-        rulesLib.required("La confirmación de contraseña es obligatoria"),
-        rulesLib.matchValue(newPasswordField.value, VALIDATION_MESSAGES.PASSWORD_CONFIRM_MISMATCH)
-      ));
+    const confirmPasswordField = useFieldValidation("", makeRules(rulesLib.required("La confirmación de contraseña es obligatoria")));
 
     const [isLoading, setIsLoading] = useState(false);
 
-    useEffect(() => {
-        if (!token) {
-            alertConfig.toastError({title: "Error", text: "Token no proporcionado"});
-            navigate("/login");
-        }
-    }, [token, navigate]);
+    if (!isAuthenticated) {
+        navigate("/login");
+        return null;
+    }
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!newPasswordField.isValid || !confirmPasswordField.isValid) {
+        if (!currentPasswordField.isValid || !newPasswordField.isValid || !confirmPasswordField.isValid) {
             await alertConfig.toastError({title: "Campos inválidos", text: "Revisa los campos con error"});
             return;
         }
@@ -42,30 +38,33 @@ export default function ResetPasswordPage() {
         }
         setIsLoading(true);
         try {
-            const result = await authService.resetPassword(token, newPasswordField.value, confirmPasswordField.value);
+            const result = await authService.changePassword(
+                currentPasswordField.value,
+                newPasswordField.value,
+                confirmPasswordField.value
+            );
             if (result.success) {
                 await alertConfig.toastSuccess({
-                    title: "Contraseña restablecida",
-                    text: "Tu contraseña ha sido cambiada exitosamente"
+                    title: "Contraseña cambiada",
+                    text: "Tu contraseña ha sido actualizada exitosamente"
                 });
+                logout(); // Opcional: forzar logout para re-login
                 navigate("/login");
             } else {
                 await alertConfig.toastError({
                     title: "Error",
-                    text: result.message || "Error al restablecer contraseña"
+                    text: result.message || "Error al cambiar contraseña"
                 });
             }
         } catch {
             await alertConfig.toastError({
                 title: "Error",
-                text: "Ocurrió un error al restablecer la contraseña"
+                text: "Ocurrió un error al cambiar la contraseña"
             });
         } finally {
             setIsLoading(false);
         }
     };
-
-    if (!token) return null;
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -76,12 +75,28 @@ export default function ResetPasswordPage() {
                         <img src={logo} alt="CONA" className="w-full h-full object-contain p-1"/>
                     </div>
                     <div>
-                        <CardTitle className="text-2xl font-bold">Restablecer Contraseña</CardTitle>
-                        <CardDescription>Ingresa tu nueva contraseña</CardDescription>
+                        <CardTitle className="text-2xl font-bold">Cambiar Contraseña</CardTitle>
+                        <CardDescription>Ingresa tu contraseña actual y la nueva</CardDescription>
                     </div>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="currentPassword">Contraseña actual</Label>
+                            <Input
+                                id="currentPassword"
+                                type="password"
+                                placeholder="••••••••••"
+                                value={currentPasswordField.value}
+                                onChange={currentPasswordField.onChange}
+                                onBlur={currentPasswordField.onBlur}
+                                disabled={isLoading}
+                                aria-invalid={currentPasswordField.showError}
+                            />
+                            {currentPasswordField.showError && (
+                                <p className="text-[12px] text-destructive">{currentPasswordField.error}</p>
+                            )}
+                        </div>
                         <div className="space-y-2">
                             <Label htmlFor="newPassword">Nueva contraseña</Label>
                             <Input
@@ -99,7 +114,7 @@ export default function ResetPasswordPage() {
                             )}
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
+                            <Label htmlFor="confirmPassword">Confirmar nueva contraseña</Label>
                             <Input
                                 id="confirmPassword"
                                 type="password"
@@ -114,15 +129,9 @@ export default function ResetPasswordPage() {
                                 <p className="text-[12px] text-destructive">{confirmPasswordField.error}</p>
                             )}
                         </div>
-                        <Button type="submit" className="w-full" loading={isLoading} disabled={isLoading || !newPasswordField.isValid || !confirmPasswordField.isValid}>
-                            {isLoading ? "Restableciendo..." : "Restablecer contraseña"}
+                        <Button type="submit" className="w-full" disabled={isLoading}>
+                            {isLoading ? "Cambiando..." : "Cambiar contraseña"}
                         </Button>
-
-                        <div className="mt-4 text-center">
-                            <Link to="/login" className="text-sm text-muted-foreground hover:text-primary">
-                                Volver al inicio de sesión
-                            </Link>
-                        </div>
                     </form>
                 </CardContent>
             </Card>
