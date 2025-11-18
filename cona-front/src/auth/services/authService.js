@@ -1,5 +1,6 @@
-import axiosClient from "./axiosClient";
+import axiosClient from "../../kernel/axiosClient.js";
 import { tokenManager } from "../utils/tokenManager";
+import { API_ENDPOINTS } from "@/lib/endpoints";
 
 function decodeJwtPayload(token) {
   try {
@@ -14,7 +15,7 @@ function decodeJwtPayload(token) {
         .join("")
     );
     return JSON.parse(jsonPayload);
-  } catch (e) {
+  } catch {
     return null;
   }
 }
@@ -22,7 +23,7 @@ function decodeJwtPayload(token) {
 export const authService = {
   login: async (credentials) => {
     try {
-      const response = await axiosClient.post("/auth/login", {
+      const response = await axiosClient.post(API_ENDPOINTS.AUTH.LOGIN, {
         email: credentials.email,
         password: credentials.password,
       });
@@ -80,5 +81,58 @@ export const authService = {
       }
     }
     return true;
+  },
+
+  forgotPassword: async (email) => {
+    try {
+      const response = await axiosClient.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email });
+      return {
+        success: response.success,
+        message: response.message,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Error al enviar solicitud de recuperación",
+      };
+    }
+  },
+
+  resetPassword: async (token, newPassword, confirmPassword) => {
+    try {
+      const response = await axiosClient.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
+        token,
+        newPassword,
+        confirmPassword,
+      });
+      return {
+        success: response.success,
+        message: response.message,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Error al restablecer contraseña",
+      };
+    }
+  },
+
+  changePassword: async (currentPassword, newPassword, confirmPassword) => {
+    try {
+      const response = await axiosClient.post(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, {
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      });
+      return {
+        success: response.success,
+        message: response.message,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Error al cambiar contraseña",
+      };
+    }
   },
 };

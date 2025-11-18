@@ -3,6 +3,7 @@ import { AuthProvider } from "@/auth/context/AuthContext";
 import Login from "@/auth/pages/Login";
 import ForgotPassword from "@/auth/pages/ForgotPassword";
 import ResetPassword from "@/auth/pages/ResetPassword";
+import ChangePasswordProfile from "@/auth/pages/ChangePasswordProfile";
 import DashboardAdmin from "@/admin/pages/DashboardAdmin";
 import DashboardEmployee from "@/employee/pages/DashboardEmployee";
 import Attendance from "@/employee/pages/Attendance";
@@ -12,7 +13,7 @@ import JustificationsEmployee from "@/employee/pages/JustificationsEmployee";
 import VacationsAdmin from "@/admin/pages/VacationsAdmin";
 import VacationsEmployee from "@/employee/pages/VacationsEmployee";
 import Config from "@/admin/pages/Config";
-import DashboardLayout from "@/layouts/DashboardLayout";
+import DashboardLayout from "@/auth/pages/DashboardLayout";
 import { ProtectedRoute } from "@/auth/components/ProtectedRoute";
 import DashboardIndex from "@/auth/pages/DashboardIndex";
 
@@ -104,6 +105,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={["admin"]}>
                   <Config />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="change-password"
+              element={
+                <ProtectedRoute>
+                  <ChangePasswordProfile />
                 </ProtectedRoute>
               }
             />

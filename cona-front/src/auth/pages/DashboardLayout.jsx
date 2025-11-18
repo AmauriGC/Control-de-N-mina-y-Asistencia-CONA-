@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link, Outlet } from "react-router-dom";
 import { useAuth } from "@/auth/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Clock, Users, FileText, Calendar, Settings, LogOut, ClipboardList, Menu } from "lucide-react";
+import { Clock, Users, FileText, Calendar, Settings, LogOut, ClipboardList, Menu, Lock } from "lucide-react";
 import logo from "@/assets/CONA.png";
 import { alertConfig } from "@/lib/alert-config";
 
@@ -33,12 +33,14 @@ function NavContent({ onNavigate }) {
           { href: "/dashboard/justifications/admin", label: "Justificaciones", icon: FileText },
           { href: "/dashboard/vacations/admin", label: "Vacaciones", icon: Calendar },
           { href: "/dashboard/config", label: "Configuración", icon: Settings },
+          { href: "/dashboard/change-password", label: "Cambiar contraseña", icon: Lock },
         ]
       : [
           { href: "/dashboard/employee", label: "Dashboard", icon: Clock },
           { href: "/dashboard/attendance", label: "Mi Asistencia", icon: ClipboardList },
           { href: "/dashboard/justifications/employee", label: "Justificaciones", icon: FileText },
           { href: "/dashboard/vacations/employee", label: "Vacaciones", icon: Calendar },
+          { href: "/dashboard/change-password", label: "Cambiar contraseña", icon: Lock },
         ];
 
   return (
