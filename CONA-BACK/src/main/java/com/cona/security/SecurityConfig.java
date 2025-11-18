@@ -5,7 +5,6 @@ import com.cona.security.jwt.JwtAuthenticationFilter;
 import com.cona.security.jwt.JwtTokenProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -23,29 +22,61 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity
 public class SecurityConfig {
 
+    private static final String[] ADMIN_ENDPOINTS = {
+    };
+
+    private static final String[] EMPLOYEE_ENDPOINTS = {
+    };
+
+    private static final String[] COMMON_ENDPOINTS = {
+    };
+
+    private static final String[] PUBLIC_ENDPOINTS = {
+            "/auth/login",
+            "/auth/register",
+            "/auth/forgot-password",
+            "/auth/reset-password"
+    };
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,
                                            JwtTokenProvider jwt,
                                            CustomUserDetailsService users,
                                            AuthenticationProvider authenticationProvider) throws Exception {
+
         http.csrf(csrf -> csrf.disable())
-            .cors(cors -> {})
-            .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**").permitAll()
-                .anyRequest().authenticated()
-            )
-            .authenticationProvider(authenticationProvider)
-            .addFilterBefore(new JwtAuthenticationFilter(jwt, users), UsernamePasswordAuthenticationFilter.class);
+                .cors(cors -> {
+                })
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+
+                        // Solo ADMIN
+                        .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")
+
+                        // Solo EMPLOYEE
+                        .requestMatchers(EMPLOYEE_ENDPOINTS).hasRole("EMPLOYEE")
+
+                        // ADMIN o EMPLOYEE
+                        .requestMatchers(COMMON_ENDPOINTS).hasAnyRole("ADMIN", "EMPLOYEE")
+
+                        .anyRequest().authenticated()
+                )
+                .authenticationProvider(authenticationProvider)
+                .addFilterBefore(new JwtAuthenticationFilter(jwt, users), UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() { return new BCryptPasswordEncoder(); }
 
     @Bean
-    public AuthenticationProvider authenticationProvider(UserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
+    public AuthenticationProvider authenticationProvider(UserDetailsService userDetailsService,
+                                                         PasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
