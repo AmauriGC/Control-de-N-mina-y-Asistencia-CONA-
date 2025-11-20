@@ -20,23 +20,32 @@ import java.time.LocalDateTime;
 public class WorkSchedule {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id")
     private Long id;
 
-    @Column(nullable = false)
-    private String dayOfWeek;
+    @Column(name = "name", nullable = false, unique = true)
+    private String name;
 
+    @Column(name = "start_time", nullable = false)
     private LocalTime startTime;
 
+    @Column(name = "end_time", nullable = false)
     private LocalTime endTime;
 
-    @Column(nullable = false)
-    private Boolean isWorkingDay = true;
+    @Column(name = "tolerance_minutes", nullable = false)
+    private Integer toleranceMinutes = 30;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean active = true;
 
     @CreatedDate
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @LastModifiedDate
-    @Column(nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 }
