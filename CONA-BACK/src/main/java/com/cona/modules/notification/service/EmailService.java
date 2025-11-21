@@ -30,14 +30,14 @@ public class EmailService {
         String subject = "Restablecimiento de Contraseña - CONA";
         String body = """
                 Hola,
-
+                
                 Has solicitado restablecer tu contraseña para CONA.
-
+                
                 Haz clic en el siguiente enlace para restablecer tu contraseña:
                 %s
-
+                
                 Si no solicitaste este cambio, ignora este correo.
-
+                
                 Saludos,
                 Equipo CONA
                 """.formatted(resetUrl);
