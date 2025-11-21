@@ -14,4 +14,5 @@ public record ResetPasswordRequest(
 
         @NotBlank(message = "La confirmación de contraseña es obligatoria")
         String confirmPassword
-) {}
+) {
+}
