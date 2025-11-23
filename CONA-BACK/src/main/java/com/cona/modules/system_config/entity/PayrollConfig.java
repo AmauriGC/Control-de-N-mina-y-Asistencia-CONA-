@@ -2,6 +2,7 @@ package com.cona.modules.system_config.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 @Table(name = "payroll_configs")
 @Data
 @NoArgsConstructor
+@Builder
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
 public class PayrollConfig {
