@@ -8,28 +8,28 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "system_configs")
+@Table(name = "payroll_configs")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-public class SystemConfig {
+public class PayrollConfig {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     private Long id;
 
-    @Column(name = "config_key", nullable = false, unique = true)
-    private String key;
+    @Column(name = "isr_fixed", nullable = false, precision = 10, scale = 2)
+    private BigDecimal isrFixed;
 
-    @Column(name = "config_value", nullable = false)
-    private String value;
+    @Column(name = "imss_fixed", nullable = false, precision = 10, scale = 2)
+    private BigDecimal imssFixed;
 
-    @Column(name = "description")
-    private String description;
+    @Column(name = "late_penalty", nullable = false, precision = 10, scale = 2)
+    private BigDecimal latePenalty;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
