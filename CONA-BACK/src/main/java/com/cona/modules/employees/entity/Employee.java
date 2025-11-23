@@ -1,7 +1,7 @@
 package com.cona.modules.employees.entity;
 
 import com.cona.modules.auth.entity.User;
-import com.cona.modules.contracts.enums.ContractType;
+import com.cona.modules.employees.enums.ContractType;
 import com.cona.modules.employees.enums.EmployeeStatus;
 import com.cona.modules.system_config.entity.WorkSchedule;
 import jakarta.persistence.*;
@@ -23,8 +23,17 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
 public class Employee {
+
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @Column(name = "employee_key", nullable = false, unique = true, length = 5)
+    private String employeeKey;
 
     @Column(name = "full_name", nullable = false)
     private String fullName;
@@ -40,7 +49,7 @@ public class Employee {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "contract_type", nullable = false)
-    private ContractType contractType; // TEMPORAL / INDEFINIDO
+    private ContractType contractType;
 
     @Column(name = "contract_start_date", nullable = false)
     private LocalDate contractStartDate;
@@ -56,11 +65,6 @@ public class Employee {
 
     @Column(name = "clabe")
     private String clabe;
-
-    @OneToOne(fetch = FetchType.LAZY)
-    @MapsId
-    @JoinColumn(name = "id")
-    private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "work_schedule_id")
