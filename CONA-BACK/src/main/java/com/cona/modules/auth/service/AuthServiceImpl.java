@@ -41,10 +41,6 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException("INVALID_EMAIL", "Formato de correo electrónico inválido");
         }
 
-        if (!Validations.isValidPassword(password)) {
-            throw new BusinessException("INVALID_PASSWORD", "La contraseña no cumple con los requisitos de seguridad");
-        }
-
         // Buscar usuario
         User user = users.findByEmail(email).orElseThrow(() -> new BusinessException("INVALID_CREDENTIALS", "Credenciales incorrectas"));
 
