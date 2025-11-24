@@ -14,13 +14,7 @@ public interface HolidayService {
 
     HolidayResponse getById(Long id);
 
-    List<HolidayResponse> getAll();
+    List<HolidayResponse> getAll(Integer year, HolidayType type, Boolean upcoming);
 
     void delete(Long id);
-
-    List<HolidayResponse> getByYear(int year);
-
-    List<HolidayResponse> getByType(HolidayType type);
-
-    List<HolidayResponse> getUpcoming();
 }
