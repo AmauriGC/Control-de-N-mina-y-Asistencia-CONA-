@@ -42,4 +42,10 @@ public class EmployeeController {
         service.toggleStatus(id);
         return ApiResponse.success("Estado de empleado actualizado con éxito");
     }
+
+    @PutMapping("/{id}")
+    public ApiResponse<EmployeeResponseDto> update(@PathVariable Long id, @Valid @RequestBody EmployeeRequestDto dto) {
+        return ApiResponse.success("Empleado actualizado correctamente", service.update(id, dto));
+    }
+
 }
