@@ -23,12 +23,15 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private static final String[] ADMIN_ENDPOINTS = {
+            "/employees",
+            "/employees/*/status"
     };
 
     private static final String[] EMPLOYEE_ENDPOINTS = {
     };
 
     private static final String[] COMMON_ENDPOINTS = {
+            "/employees/*",
     };
 
     private static final String[] PUBLIC_ENDPOINTS = {
