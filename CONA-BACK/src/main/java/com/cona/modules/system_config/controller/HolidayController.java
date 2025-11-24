@@ -1,12 +1,12 @@
 package com.cona.modules.system_config.controller;
 
+import com.cona.kernel.response.ApiResponse;
 import com.cona.modules.system_config.controller.dto.HolidayRequest;
 import com.cona.modules.system_config.controller.dto.HolidayResponse;
 import com.cona.modules.system_config.enums.HolidayType;
 import com.cona.modules.system_config.service.HolidayService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,46 +19,39 @@ public class HolidayController {
     private final HolidayService service;
 
     @PostMapping
-    public ResponseEntity<HolidayResponse> create(@Valid @RequestBody HolidayRequest request) {
-        return ResponseEntity.ok(service.create(request));
+    public ApiResponse<HolidayResponse> create(@Valid @RequestBody HolidayRequest request) {
+        HolidayResponse response = service.create(request);
+        return ApiResponse.success("Día festivo creado exitosamente", response);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<HolidayResponse> update(
+    public ApiResponse<HolidayResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody HolidayRequest request
     ) {
-        return ResponseEntity.ok(service.update(id, request));
+        HolidayResponse response = service.update(id, request);
+        return ApiResponse.success("Día festivo actualizado exitosamente", response);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<HolidayResponse> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(service.getById(id));
+    public ApiResponse<HolidayResponse> getById(@PathVariable Long id) {
+        HolidayResponse response = service.getById(id);
+        return ApiResponse.success("Día festivo obtenido exitosamente", response);
     }
 
     @GetMapping
-    public ResponseEntity<List<HolidayResponse>> getAll() {
-        return ResponseEntity.ok(service.getAll());
+    public ApiResponse<List<HolidayResponse>> getAll(
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) HolidayType type,
+            @RequestParam(required = false) Boolean upcoming
+    ) {
+        List<HolidayResponse> responses = service.getAll(year, type, upcoming);
+        return ApiResponse.success("Días festivos obtenidos exitosamente", responses);
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id) {
         service.delete(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/year/{year}")
-    public ResponseEntity<List<HolidayResponse>> getByYear(@PathVariable int year) {
-        return ResponseEntity.ok(service.getByYear(year));
-    }
-
-    @GetMapping("/type/{type}")
-    public ResponseEntity<List<HolidayResponse>> getByType(@PathVariable HolidayType type) {
-        return ResponseEntity.ok(service.getByType(type));
-    }
-
-    @GetMapping("/upcoming")
-    public ResponseEntity<List<HolidayResponse>> getUpcoming() {
-        return ResponseEntity.ok(service.getUpcoming());
+        return ApiResponse.success("Día festivo eliminado exitosamente");
     }
 }
