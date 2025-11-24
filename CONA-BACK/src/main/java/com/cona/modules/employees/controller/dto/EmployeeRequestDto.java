@@ -2,7 +2,6 @@ package com.cona.modules.employees.controller.dto;
 
 import com.cona.kernel.utils.Validations;
 import com.cona.modules.employees.enums.ContractType;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -69,5 +68,4 @@ public class EmployeeRequestDto {
 
     @NotNull(message = "El horario de trabajo es obligatorio")
     private Long workSchedule;
-
 }

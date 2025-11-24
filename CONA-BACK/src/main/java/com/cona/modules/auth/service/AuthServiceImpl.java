@@ -54,6 +54,11 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException("INVALID_CREDENTIALS", "Credenciales incorrectas");
         }
 
+        // Verificar si ya hay una sesión activa
+        if (Singleton.getInstancia_unica().yaSeUso(user.getEmail())) {
+            throw new BusinessException("SESSION_ALREADY_ACTIVE", "Ya hay una sesión activa para este usuario");
+        }
+
         // Generar token
         String token = jwt.generateToken(user.getEmail(), Map.of(
                 "id", user.getId(),
@@ -61,6 +66,10 @@ public class AuthServiceImpl implements AuthService {
                 "email", user.getEmail()
         ));
         LocalDateTime expires = LocalDateTime.now().plusSeconds(jwt.getExpirationMs() / 1000);
+
+        // Marcar que se ha usado
+        Singleton.getInstancia_unica().marcado(user.getEmail());
+
         return new AuthResponse(token, expires);
     }
 
@@ -182,5 +191,11 @@ public class AuthServiceImpl implements AuthService {
         user.setResetToken(null);
         user.setResetTokenExpiry(null);
         users.save(user);
+    }
+
+    @Override
+    public void logout(String email) {
+        // Resetear la sesión para el usuario
+        Singleton.getInstancia_unica().reset(email);
     }
 }

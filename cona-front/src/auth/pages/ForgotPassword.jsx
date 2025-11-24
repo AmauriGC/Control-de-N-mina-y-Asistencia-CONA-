@@ -6,7 +6,7 @@ import {Label} from "@/components/ui/label";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import {authService} from "@/auth/services/authService";
 import {alertConfig} from "@/lib/alert-config";
-import logo from "@/assets/CONA.png";
+import Logo from "@/components/Logo";
 import {makeRules, rulesLib, useFieldValidation} from "@/components/criteria/use-validation";
 
 export default function ForgotPasswordPage() {
@@ -52,10 +52,7 @@ export default function ForgotPasswordPage() {
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-4 text-center">
-                    <div
-                        className="mx-auto w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden ring-1 ring-border bg-card">
-                        <img src={logo} alt="CONA" className="w-full h-full object-contain p-1"/>
-                    </div>
+                    <Logo/>
                     <div>
                         <CardTitle className="text-2xl font-bold">Recuperar Contraseña</CardTitle>
                         <CardDescription>Ingresa tu correo electrónico para recibir un enlace de

@@ -61,8 +61,14 @@ export const authService = {
     }
   },
 
-  logout: () => {
-    tokenManager.clearAll();
+  logout: async () => {
+    try {
+      await axiosClient.post(API_ENDPOINTS.AUTH.LOGOUT);
+    } catch (error) {
+      console.error("Error al cerrar sesión en el servidor:", error);
+    } finally {
+      tokenManager.clearAll();
+    }
   },
 
   getCurrentUser: () => {
