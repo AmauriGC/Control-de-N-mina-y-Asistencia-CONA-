@@ -10,6 +10,7 @@ import java.time.LocalDate;
 @Data
 public class EmployeeResponseDto {
     private Long id;
+    private String employeeKey;
     private String fullName;
     private String email;
     private String position;

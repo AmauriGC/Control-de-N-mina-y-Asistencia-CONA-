@@ -29,7 +29,6 @@ public class EmployeeService {
 
     @Transactional
     public EmployeeResponseDto register(EmployeeRequestDto dto) {
-
         dto.setFullName(Sanitizer.sanitizeString(dto.getFullName()));
         dto.setEmail(Sanitizer.normalizeEmail(dto.getEmail()));
         dto.setPhone(Sanitizer.trim(dto.getPhone()));
@@ -44,11 +43,9 @@ public class EmployeeService {
         if (employeeRepository.existsByRfc(dto.getRfc()))
             throw new BusinessException("INVALID_RFC", "El RFC ya está registrado");
 
-        if (dto.getHourlyRate().doubleValue() <= 0)
-            throw new BusinessException("INVALID_HOURLY_RATE", "El pago por hora debe ser mayor a 0");
 
         WorkSchedule workSchedule = workScheduleRepository.findById(dto.getWorkSchedule())
-                .orElseThrow(() -> new RuntimeException("No se encontro el horario de trabajo"));
+                .orElseThrow(() -> new BusinessException("INVALID_WORK_SCHEDULE", "No se encontró el horario de trabajo"));
 
         String key;
         do {
@@ -134,9 +131,57 @@ public class EmployeeService {
         userRepository.save(employee.getUser());
     }
 
+    @Transactional
+    public EmployeeResponseDto update(Long id, EmployeeRequestDto dto) {
+        dto.setFullName(Sanitizer.sanitizeString(dto.getFullName()));
+        dto.setEmail(Sanitizer.normalizeEmail(dto.getEmail()));
+        dto.setPhone(Sanitizer.trim(dto.getPhone()));
+        dto.setRfc(Sanitizer.trimAndLower(dto.getRfc()));
+        dto.setPosition(Sanitizer.sanitizeString(dto.getPosition()));
+        dto.setBankAccount(Sanitizer.trim(dto.getBankAccount()));
+        dto.setBankName(Sanitizer.sanitizeString(dto.getBankName()));
+
+        Employee employee = employeeRepository.findById(id)
+                .orElseThrow(() -> new BusinessException("INVALID_ID", "No se encontró el empleado"));
+
+        if (employeeRepository.existsByRfcAndIdNot(dto.getRfc(), id)) {
+            throw new BusinessException("INVALID_RFC", "El RFC ya está registrado");
+        }
+
+        if (userRepository.existsByEmailAndIdNot(dto.getEmail(), employee.getUser().getId())) {
+            throw new BusinessException("INVALID_EMAIL", "El correo ya está registrado");
+        }
+
+
+        WorkSchedule workSchedule = workScheduleRepository.findById(dto.getWorkSchedule())
+                .orElseThrow(() -> new BusinessException("INVALID_WORK_SCHEDULE", "No se encontró el horario de trabajo"));
+
+        User user = employee.getUser();
+        user.setEmail(dto.getEmail());
+        userRepository.save(user);
+
+        employee.setFullName(dto.getFullName());
+        employee.setPosition(dto.getPosition());
+        employee.setRfc(dto.getRfc().toUpperCase());
+        employee.setHourlyRate(dto.getHourlyRate());
+        employee.setContractType(dto.getContractType());
+        employee.setContractStartDate(dto.getContractStartDate());
+        employee.setContractEndDate(dto.getContractEndDate());
+        employee.setBankAccount(dto.getBankAccount());
+        employee.setBankName(dto.getBankName());
+        employee.setClabe(dto.getClabe());
+        employee.setWorkSchedule(workSchedule);
+
+        employeeRepository.save(employee);
+
+        return toDto(employee);
+    }
+
+
     private EmployeeResponseDto toDto(Employee e) {
         EmployeeResponseDto dto = new EmployeeResponseDto();
         dto.setId(e.getId());
+        dto.setEmployeeKey(e.getEmployeeKey());
         dto.setFullName(e.getFullName());
         dto.setEmail(e.getUser().getEmail());
         dto.setPosition(e.getPosition());
