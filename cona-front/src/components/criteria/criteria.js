@@ -1,4 +1,5 @@
-import {VALIDATION_MESSAGES, VALIDATION_REGEX} from "@/lib/validations";
+import dayjs from 'dayjs';
+import {VALIDATION_MESSAGES, VALIDATION_REGEX} from "@/components/criteria/validations";
 
 export const rulesLib = {
     required: (msg = VALIDATION_MESSAGES.REQUIRED) => ({test: (v) => String(v ?? "").trim().length > 0, message: msg}),
@@ -157,6 +158,40 @@ export const rulesLib = {
     matchValue: (otherValue, message = "Los valores no coinciden") => ({
         test: (v) => v === otherValue,
         message,
+    }),
+    isValidDate: (msg = VALIDATION_MESSAGES.DATE_INVALID) => ({
+        test: (v) => {
+            if (!v) return false;
+            return dayjs(v).isValid();
+        },
+        message: msg,
+    }),
+    dateAfter: (minDate, msg = VALIDATION_MESSAGES.DATE_AFTER(minDate)) => ({
+        test: (v) => {
+            if (!v) return false;
+            const date = dayjs(v);
+            if (!date.isValid()) return false;
+            return date.isAfter(dayjs(minDate));
+        },
+        message: msg,
+    }),
+    dateBefore: (maxDate, msg = VALIDATION_MESSAGES.DATE_BEFORE(maxDate)) => ({
+        test: (v) => {
+            if (!v) return false;
+            const date = dayjs(v);
+            if (!date.isValid()) return false;
+            return date.isBefore(dayjs(maxDate));
+        },
+        message: msg,
+    }),
+    dateBetween: (startDate, endDate, msg = VALIDATION_MESSAGES.DATE_BETWEEN(startDate, endDate)) => ({
+        test: (v) => {
+            if (!v) return false;
+            const date = dayjs(v);
+            if (!date.isValid()) return false;
+            return date.isAfter(dayjs(startDate)) && date.isBefore(dayjs(endDate));
+        },
+        message: msg,
     }),
 };
 

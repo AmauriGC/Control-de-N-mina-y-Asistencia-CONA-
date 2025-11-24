@@ -2,7 +2,7 @@ import axios from "axios";
 import {tokenManager} from "../auth/utils/tokenManager.js";
 
 const axiosClient = axios.create({
-    baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080/api",
+    baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080/cona-api",
     timeout: 10000,
     headers: {
         "Content-Type": "application/json",
