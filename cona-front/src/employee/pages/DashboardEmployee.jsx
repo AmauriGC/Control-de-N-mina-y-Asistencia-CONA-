@@ -1,12 +1,40 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Clock, Calendar, AlertTriangle, FileText } from 'lucide-react'
+import { Clock, Calendar, AlertTriangle, FileText, User } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/auth/context/AuthContext'
+import { useState, useEffect } from 'react'
+import { employeeService } from '@/admin/pages/employees/service/employeeService'
+import { alertConfig } from '@/lib/alert-config'
 
 export default function DashboardEmployee() {
   const { user } = useAuth()
+  const [profile, setProfile] = useState(null)
+  const [profileLoading, setProfileLoading] = useState(true)
+
+  useEffect(() => {
+    if (user?.id) {
+      loadProfile()
+    }
+  }, [user])
+
+  const loadProfile = async () => {
+    try {
+      setProfileLoading(true)
+      const response = await employeeService.getById(user.id)
+      if (response.success) {
+        setProfile(response.data)
+      } else {
+        alertConfig.toastError({ title: "Error", text: response.message })
+      }
+    } catch (error) {
+      alertConfig.toastError({ title: "Error", text: "No se pudo cargar el perfil" })
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
   const myAttendance = [
     { date: '2024-01-15', entry: '08:55', exit: '17:30', status: 'on-time' },
     { date: '2024-01-16', entry: '09:10', exit: '17:35', status: 'late' },
@@ -106,6 +134,34 @@ export default function DashboardEmployee() {
           </Link>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Mi Perfil
+          </CardTitle>
+          <CardDescription>Información personal y laboral</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {profileLoading ? (
+            <div className="text-center py-4">Cargando perfil...</div>
+          ) : profile ? (
+            <div className="space-y-2">
+              <p><strong>Nombre:</strong> {profile.fullName}</p>
+              <p><strong>Email:</strong> {profile.email}</p>
+              <p><strong>Puesto:</strong> {profile.position}</p>
+              <p><strong>RFC:</strong> {profile.rfc}</p>
+              <p><strong>Pago por Hora:</strong> ${profile.hourlyRate}</p>
+              <p><strong>Tipo de Contrato:</strong> {profile.contractType === 'FULL_TIME' ? 'Tiempo Completo' : profile.contractType === 'PART_TIME' ? 'Medio Tiempo' : 'Contratista'}</p>
+              <p><strong>Fecha Inicio:</strong> {profile.contractStartDate}</p>
+              <p><strong>Estado:</strong> <Badge variant={profile.status === 'ACTIVE' ? 'default' : 'secondary'}>{profile.status === 'ACTIVE' ? 'Activo' : 'Inactivo'}</Badge></p>
+            </div>
+          ) : (
+            <div className="text-center py-4">No se pudo cargar el perfil</div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

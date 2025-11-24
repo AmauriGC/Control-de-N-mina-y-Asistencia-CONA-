@@ -39,4 +39,8 @@ export const VALIDATION_MESSAGES = {
     DECIMAL_INVALID: "Monto inválido",
     TEXT_GENERAL_INVALID: "Caracteres no permitidos",
     STARTS_WITH_UPPER: "Debe iniciar con mayúscula",
+    DATE_INVALID: "Fecha inválida",
+    DATE_AFTER: (date) => `Debe ser después de ${date}`,
+    DATE_BEFORE: (date) => `Debe ser antes de ${date}`,
+    DATE_BETWEEN: (start, end) => `Debe estar entre ${start} y ${end}`,
 };

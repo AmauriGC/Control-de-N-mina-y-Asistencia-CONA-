@@ -13,6 +13,7 @@ public class EmployeeResponseDto {
     private String employeeKey;
     private String fullName;
     private String email;
+    private String phone;
     private String position;
     private String rfc;
     private BigDecimal hourlyRate;
@@ -20,5 +21,9 @@ public class EmployeeResponseDto {
     private LocalDate contractStartDate;
     private LocalDate contractEndDate;
     private EmployeeStatus status;
-}
 
+    private String bankAccount;
+    private String bankName;
+    private String clabe;
+    private Long workSchedule;
+}

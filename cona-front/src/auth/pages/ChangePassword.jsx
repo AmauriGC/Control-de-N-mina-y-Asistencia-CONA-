@@ -7,9 +7,9 @@ import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/compo
 import {useAuth} from "@/auth/context/AuthContext";
 import {authService} from "@/auth/services/authService";
 import {alertConfig} from "@/lib/alert-config";
-import logo from "@/assets/CONA.png";
+import Logo from "@/components/Logo";
 import {makeRules, passwordValidationRules, rulesLib, useFieldValidation} from "@/components/criteria/use-validation";
-import {VALIDATION_MESSAGES} from "@/lib/validations";
+import {VALIDATION_MESSAGES} from "@/components/criteria/validations";
 
 export default function ChangePasswordPage() {
     const {isAuthenticated, logout} = useAuth();
@@ -48,7 +48,7 @@ export default function ChangePasswordPage() {
                     title: "Contraseña cambiada",
                     text: "Tu contraseña ha sido actualizada exitosamente"
                 });
-                logout(); // Opcional: forzar logout para re-login
+                await logout(); // Opcional: forzar logout para re-login
                 navigate("/login");
             } else {
                 await alertConfig.toastError({
@@ -70,10 +70,7 @@ export default function ChangePasswordPage() {
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-4 text-center">
-                    <div
-                        className="mx-auto w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden ring-1 ring-border bg-card">
-                        <img src={logo} alt="CONA" className="w-full h-full object-contain p-1"/>
-                    </div>
+                    <Logo/>
                     <div>
                         <CardTitle className="text-2xl font-bold">Cambiar Contraseña</CardTitle>
                         <CardDescription>Ingresa tu contraseña actual y la nueva</CardDescription>
