@@ -11,6 +11,5 @@ public record AuthRequest(
         String email,
 
         @NotBlank(message = "La contraseña es obligatoria")
-        @Pattern(regexp = Validations.PASSWORD_REGEX, message = "La contraseña debe tener al menos 8 caracteres, incluir mayúscula, minúscula, dígito y carácter especial")
         String password
 ) {}
