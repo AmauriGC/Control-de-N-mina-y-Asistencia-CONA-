@@ -9,7 +9,7 @@ import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/compo
 import {useAuth} from "@/auth/context/AuthContext";
 import {alertConfig} from "@/lib/alert-config";
 import {tokenManager} from "@/auth/utils/tokenManager";
-import logo from "@/assets/CONA.png";
+import Logo from "@/components/Logo";
 import {makeRules, rulesLib, useFieldValidation} from "@/components/criteria/use-validation";
 
 export default function LoginPage() {
@@ -40,15 +40,15 @@ export default function LoginPage() {
         }
         setIsLoading(true);
         try {
-            const success = await login(emailField.value, passwordField.value);
-            if (success) {
+            const result = await login(emailField.value, passwordField.value);
+            if (result.success) {
                 await alertConfig.toastSuccess({title: "Bienvenido", text: "Inicio de sesión exitoso"});
                 const currentRole = tokenManager.getUser()?.role || user?.role;
                 navigate(currentRole === "admin" ? "/dashboard/admin" : "/dashboard/employee", {replace: true});
             } else {
-                await alertConfig.toastError({title: "Error", text: "Credenciales incorrectas"});
+                await alertConfig.toastError({title: "Error", text: result.message || "Credenciales incorrectas"});
             }
-        } catch (error) {
+        } catch {
             await alertConfig.toastError({title: "Error", text: "Ocurrió un error al iniciar sesión"});
         } finally {
             setIsLoading(false);
@@ -61,10 +61,7 @@ export default function LoginPage() {
         <div className="min-h-screen flex items-center justify-center bg-background p-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="space-y-4 text-center">
-                    <div
-                        className="mx-auto w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden ring-1 ring-border bg-card">
-                        <img src={logo} alt="CONA" className="w-full h-full object-contain p-1"/>
-                    </div>
+                    <Logo/>
                     <div>
                         <CardTitle className="text-2xl font-bold">Sistema de Nómina</CardTitle>
                         <CardDescription>Ingresa tus credenciales para continuar</CardDescription>

@@ -10,6 +10,7 @@ public class Validations {
     public static final String TIME_REGEX = "^\\d{2}:\\d{2}$";
     public static final String DESCRIPTION_REGEX = "^[a-zA-Z0-9\\s.,!?;:'\"()-]{1,500}$";
     public static final String RFC_REGEX = "^[A-Z&Ñ]{3,4}[0-9]{6}[A-Z0-9]{3}$";
+    public static final String CLAVE = "^[0-9]{18}$";
 
 
     public static boolean isValidEmail(String email) {

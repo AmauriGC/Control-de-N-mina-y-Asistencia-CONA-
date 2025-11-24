@@ -38,6 +38,9 @@ public class Employee {
     @Column(name = "full_name", nullable = false)
     private String fullName;
 
+    @Column(name = "phone")
+    private String phone;
+
     @Column(name = "position", nullable = false)
     private String position;
 
@@ -81,4 +84,5 @@ public class Employee {
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
 }

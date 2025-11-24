@@ -48,4 +48,11 @@ public class AuthController {
         authService.resetPassword(reqBody);
         return ApiResponse.success("Contraseña restablecida exitosamente");
     }
+
+    @PostMapping("/logout")
+    public ApiResponse<String> logout(Authentication authentication, HttpServletRequest request) {
+        String email = authentication.getName();
+        authService.logout(email);
+        return ApiResponse.success("Logout exitoso");
+    }
 }

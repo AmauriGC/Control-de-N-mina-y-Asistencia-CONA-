@@ -25,13 +25,13 @@ export function AuthProvider({ children }) {
     if (result.success && result.user) {
       setUser(result.user);
       setIsAuthenticated(true);
-      return true;
+      return result;
     }
-    return false;
+    return result;
   };
 
-  const logout = () => {
-    authService.logout();
+  const logout = async () => {
+    await authService.logout();
     localStorage.clear();
     setUser(null);
     setIsAuthenticated(false);

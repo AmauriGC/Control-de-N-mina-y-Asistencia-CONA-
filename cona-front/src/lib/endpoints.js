@@ -9,13 +9,13 @@ export const API_ENDPOINTS = {
     EMPLOYEES: {
         LIST: "/employees",
         CREATE: "/employees",
+        GET_BY_ID: "/employees/:id",
         UPDATE: "/employees/:id",
-        DELETE: "/employees/:id",
+        TOGGLE_STATUS: "/employees/:id/status",
     },
     ATTENDANCE: {
         LIST: "/attendance",
         CHECK_IN: "/attendance/check-in",
-
         CHECK_OUT: "/attendance/check-out",
     },
     JUSTIFICATIONS: {

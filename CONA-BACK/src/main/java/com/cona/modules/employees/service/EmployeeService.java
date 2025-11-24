@@ -5,16 +5,19 @@ import com.cona.kernel.utils.Sanitizer;
 import com.cona.modules.auth.entity.User;
 import com.cona.modules.auth.enums.Role;
 import com.cona.modules.auth.repository.UserRepository;
-import com.cona.modules.employees.repository.EmployeeRepository;
 import com.cona.modules.employees.controller.dto.EmployeeRequestDto;
 import com.cona.modules.employees.controller.dto.EmployeeResponseDto;
 import com.cona.modules.employees.entity.Employee;
 import com.cona.modules.employees.enums.EmployeeStatus;
+import com.cona.modules.employees.repository.EmployeeRepository;
 import com.cona.modules.system_config.entity.WorkSchedule;
 import com.cona.modules.system_config.repository.WorkScheduleRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -49,7 +52,7 @@ public class EmployeeService {
 
         String key;
         do {
-            key = String.format("%05d", (int)(Math.random() * 100000));
+            key = String.format("%05d", (int) (Math.random() * 100000));
         } while (employeeRepository.existsByEmployeeKey(key));
 
         User user = new User();
@@ -65,6 +68,7 @@ public class EmployeeService {
         Employee employee = new Employee();
         employee.setUser(savedUser);
         employee.setFullName(dto.getFullName());
+        employee.setPhone(dto.getPhone());
         employee.setPosition(dto.getPosition());
         employee.setRfc(dto.getRfc().toUpperCase());
         employee.setHourlyRate(dto.getHourlyRate());
@@ -82,7 +86,6 @@ public class EmployeeService {
 
         return toDto(employee);
     }
-
 
     public Page<EmployeeResponseDto> list(Integer page, Integer size, String name, String status) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("fullName").ascending());
@@ -118,7 +121,7 @@ public class EmployeeService {
     @Transactional
     public void toggleStatus(Long id) {
         Employee employee = employeeRepository.findById(id)
-                .orElseThrow(() -> new BusinessException("INVALID_ID","No se encontró el empleado"));
+                .orElseThrow(() -> new BusinessException("INVALID_ID", "No se encontró el empleado"));
 
         if (employee.getStatus() == EmployeeStatus.ACTIVE)
             employee.setStatus(EmployeeStatus.INACTIVE);
@@ -152,7 +155,6 @@ public class EmployeeService {
             throw new BusinessException("INVALID_EMAIL", "El correo ya está registrado");
         }
 
-
         WorkSchedule workSchedule = workScheduleRepository.findById(dto.getWorkSchedule())
                 .orElseThrow(() -> new BusinessException("INVALID_WORK_SCHEDULE", "No se encontró el horario de trabajo"));
 
@@ -161,6 +163,7 @@ public class EmployeeService {
         userRepository.save(user);
 
         employee.setFullName(dto.getFullName());
+        employee.setPhone(dto.getPhone());
         employee.setPosition(dto.getPosition());
         employee.setRfc(dto.getRfc().toUpperCase());
         employee.setHourlyRate(dto.getHourlyRate());
@@ -184,6 +187,7 @@ public class EmployeeService {
         dto.setEmployeeKey(e.getEmployeeKey());
         dto.setFullName(e.getFullName());
         dto.setEmail(e.getUser().getEmail());
+        dto.setPhone(e.getPhone());
         dto.setPosition(e.getPosition());
         dto.setRfc(e.getRfc());
         dto.setHourlyRate(e.getHourlyRate());
@@ -191,6 +195,10 @@ public class EmployeeService {
         dto.setContractStartDate(e.getContractStartDate());
         dto.setContractEndDate(e.getContractEndDate());
         dto.setStatus(e.getStatus());
+        dto.setBankAccount(e.getBankAccount());
+        dto.setBankName(e.getBankName());
+        dto.setClabe(e.getClabe());
+        dto.setWorkSchedule(e.getWorkSchedule().getId());
         return dto;
     }
 }
