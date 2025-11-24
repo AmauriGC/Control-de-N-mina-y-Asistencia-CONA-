@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -76,9 +77,24 @@ public class HolidayServiceImpl implements HolidayService {
     }
 
     @Override
-    public List<HolidayResponse> getAll() {
-        return repository.findAll()
-                .stream()
+    public List<HolidayResponse> getAll(Integer year, HolidayType type, Boolean upcoming) {
+        List<Holiday> holidays;
+
+        if (upcoming != null && upcoming) {
+            holidays = repository.findUpcomingHolidays(LocalDate.now());
+        } else if (year != null && type != null) {
+            holidays = repository.findByYear(year).stream()
+                    .filter(h -> h.getType().equals(type))
+                    .collect(Collectors.toList());
+        } else if (year != null) {
+            holidays = repository.findByYear(year);
+        } else if (type != null) {
+            holidays = repository.findByTypeOrderByDateAsc(type);
+        } else {
+            holidays = repository.findAll();
+        }
+
+        return holidays.stream()
                 .map(this::toResponse)
                 .toList();
     }
@@ -91,30 +107,6 @@ public class HolidayServiceImpl implements HolidayService {
         repository.delete(holiday);
     }
 
-    @Override
-    public List<HolidayResponse> getByYear(int year) {
-        return repository.findByYear(year)
-                .stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
-    @Override
-    public List<HolidayResponse> getByType(HolidayType type) {
-        return repository.findByTypeOrderByDateAsc(type)
-                .stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
-    @Override
-    public List<HolidayResponse> getUpcoming() {
-        return repository.findUpcomingHolidays(LocalDate.now())
-                .stream()
-                .map(this::toResponse)
-                .toList();
-    }
-
     private HolidayResponse toResponse(Holiday h) {
         HolidayResponse response = new HolidayResponse();
 
@@ -123,8 +115,6 @@ public class HolidayServiceImpl implements HolidayService {
         response.setName(h.getName());
         response.setType(h.getType());
         response.setDescription(h.getDescription());
-        response.setCreatedAt(h.getCreatedAt());
-        response.setUpdatedAt(h.getUpdatedAt());
 
         return response;
     }
