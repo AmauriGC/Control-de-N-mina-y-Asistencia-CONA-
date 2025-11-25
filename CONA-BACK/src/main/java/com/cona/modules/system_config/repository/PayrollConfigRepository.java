@@ -1,11 +1,9 @@
 package com.cona.modules.system_config.repository;
 
-
 import com.cona.modules.system_config.entity.PayrollConfig;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+import org.springframework.stereotype.Repository; // Aunque JpaRepository ya implica Repository, es buena práctica.
 
 @Repository
 public interface PayrollConfigRepository extends JpaRepository<PayrollConfig, Long> {
-
 }

@@ -1,69 +1,64 @@
 package com.cona.modules.system_config.service;
 
+import com.cona.exception.types.BusinessException;
 import com.cona.modules.system_config.controller.dto.PayrollConfigRequest;
+import com.cona.modules.system_config.controller.dto.PayrollConfigResponse;
 import com.cona.modules.system_config.entity.PayrollConfig;
 import com.cona.modules.system_config.repository.PayrollConfigRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import jakarta.transaction.Transactional;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class PayrollConfigService {
 
-    private PayrollConfigRepository payrollConfigRepository;
+    private final PayrollConfigRepository payrollConfigRepository;
 
-    @Autowired
-    public PayrollConfigService(PayrollConfigRepository payrollConfigRepository) {
-        this.payrollConfigRepository = payrollConfigRepository;
+    private PayrollConfigResponse toDto(PayrollConfig entity) {
+        PayrollConfigResponse dto = new PayrollConfigResponse();
+        dto.setId(entity.getId());
+        dto.setIsrFixed(entity.getIsrFixed());
+        dto.setImssFixed(entity.getImssFixed());
+        dto.setLatePenalty(entity.getLatePenalty());
+        dto.setCreatedAt(entity.getCreatedAt());
+        dto.setUpdatedAt(entity.getUpdatedAt());
+        return dto;
     }
 
-    public List<PayrollConfig> findAllConfigs() {
-        return payrollConfigRepository.findAll();
+    @Transactional
+    public PayrollConfigResponse createOrUpdate(PayrollConfigRequest dto) {
+        Optional<PayrollConfig> existingConfig = payrollConfigRepository.findById(1L);
+
+        PayrollConfig config;
+
+        if (existingConfig.isPresent()) {
+            config = existingConfig.get();
+        } else {
+            config = new PayrollConfig();
+        }
+
+        config.setIsrFixed(dto.getIsrFixed());
+        config.setImssFixed(dto.getImssFixed());
+        config.setLatePenalty(dto.getLatePenalty());
+
+        PayrollConfig savedConfig = payrollConfigRepository.save(config);
+        return toDto(savedConfig);
     }
 
-    public Optional<PayrollConfig> findConfigById(Long id) {
-        return payrollConfigRepository.findById(id);
-    }
-
-    public PayrollConfig saveConfig(PayrollConfigRequest config) {
-        var configEntity = new PayrollConfig();
-        configEntity.setIsrFixed(config.getIsrFixed());
-        configEntity.setImssFixed(config.getImssFixed());
-        configEntity.setLatePenalty(config.getLatePenalty());
-        // The save method handles both creation (new ID) and update (existing ID)
-        return payrollConfigRepository.save(configEntity);
-    }
-
-    public PayrollConfig createConfigFromDto(PayrollConfigRequest configRequest) {
-        // Map DTO fields to a new Entity
-        PayrollConfig newConfig = new PayrollConfig();
-        newConfig.setIsrFixed(configRequest.getIsrFixed());
-        newConfig.setImssFixed(configRequest.getImssFixed());
-        newConfig.setLatePenalty(configRequest.getLatePenalty());
-
-        // Save the new Entity
-        return payrollConfigRepository.save(newConfig);
-    }
-
-    public Optional<PayrollConfig> updateConfigFromDto(Long id, PayrollConfigRequest configRequest) {
-        // Find the existing entity by ID
-        return payrollConfigRepository.findById(id)
-                .map(existingConfig -> {
-                    // Update the existing Entity fields from the DTO
-                    existingConfig.setIsrFixed(configRequest.getIsrFixed());
-                    existingConfig.setImssFixed(configRequest.getImssFixed());
-                    existingConfig.setLatePenalty(configRequest.getLatePenalty());
-
-                    // Save the updated entity (JPA handles the update since the ID is present)
-                    return payrollConfigRepository.save(existingConfig);
+    public PayrollConfigResponse getCurrentConfig() {
+        PayrollConfig config = payrollConfigRepository.findById(1L)
+                .orElseGet(() -> {
+                    List<PayrollConfig> allConfigs = payrollConfigRepository.findAll();
+                    if (allConfigs.isEmpty()) {
+                        throw new BusinessException("NOT_FOUND", "No se ha establecido una configuración de nómina.");
+                    }
+                    return allConfigs.get(0);
                 });
+
+        return toDto(config);
     }
-
-    public void deleteConfig(Long id) {
-        payrollConfigRepository.deleteById(id);
-    }
-
-
 }
