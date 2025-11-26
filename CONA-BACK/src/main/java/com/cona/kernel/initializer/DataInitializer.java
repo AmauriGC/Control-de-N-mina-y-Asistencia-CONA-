@@ -10,6 +10,10 @@ import com.cona.modules.employees.entity.Employee;
 import com.cona.modules.employees.enums.ContractType;
 import com.cona.modules.employees.enums.EmployeeStatus;
 import com.cona.modules.employees.repository.EmployeeRepository;
+import com.cona.modules.justifications.entity.Justification;
+import com.cona.modules.justifications.enums.DocumentType;
+import com.cona.modules.justifications.enums.JustificationStatus;
+import com.cona.modules.justifications.repository.JustificationRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +25,7 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Component
@@ -33,6 +38,7 @@ public class DataInitializer implements CommandLineRunner {
     private final PasswordEncoder encoder;
     private final WorkScheduleRepository workSchedules;
     private final EmployeeRepository employees;
+    private final JustificationRepository justifications;
 
     @Value("${app.seed.admin.email}")
     private String adminEmail;
@@ -49,11 +55,13 @@ public class DataInitializer implements CommandLineRunner {
     public DataInitializer(UserRepository users,
                            PasswordEncoder encoder,
                            WorkScheduleRepository workSchedules,
-                           EmployeeRepository employees) {
+                           EmployeeRepository employees,
+                           JustificationRepository justifications) {
         this.users = users;
         this.encoder = encoder;
         this.workSchedules = workSchedules;
         this.employees = employees;
+        this.justifications = justifications;
     }
 
     @Override
@@ -89,6 +97,9 @@ public class DataInitializer implements CommandLineRunner {
 
         // Empleado de prueba
         seedEmployee();
+        
+        // Justificaciones de prueba
+        seedJustifications();
     }
 
     private void seedUser(String email, String rawPassword, Role role) {
@@ -173,5 +184,62 @@ public class DataInitializer implements CommandLineRunner {
         employees.save(employee);
 
         log.info("Empleado creado: {} con clave {}", employee.getFullName(), key);
+    }
+
+    private void seedJustifications() {
+        // Buscar el empleado de prueba
+        User employeeUser = users.findByEmail(Sanitizer.trimAndLower(employeeEmail)).orElse(null);
+        if (employeeUser == null) {
+            log.error("Usuario empleado no encontrado para crear justificaciones");
+            return;
+        }
+
+        Employee employee = employees.findByUserId(employeeUser.getId()).orElse(null);
+        if (employee == null) {
+            log.error("Empleado no encontrado para crear justificaciones");
+            return;
+        }
+
+        // Verificar si ya existen justificaciones para este empleado
+        if (!justifications.findByEmployee(employee, org.springframework.data.domain.Pageable.unpaged()).isEmpty()) {
+            log.info("Ya existen justificaciones para el empleado: {}", employee.getFullName());
+            return;
+        }
+
+        // Crear justificaciones de ejemplo
+        createSampleJustification(employee, LocalDate.now().minusDays(5), 
+            DocumentType.MEDICAL_CERTIFICATE, JustificationStatus.PENDING,
+            "Cita médica de emergencia", null);
+
+        createSampleJustification(employee, LocalDate.now().minusDays(10), 
+            DocumentType.MEDICAL_CERTIFICATE, JustificationStatus.APPROVED,
+            "Trámite bancario urgente", "Aprobado - Documento válido presentado");
+
+        createSampleJustification(employee, LocalDate.now().minusDays(15), 
+            DocumentType.OTHER, JustificationStatus.REJECTED,
+            "Emergencia familiar", "Rechazado - Documento no corresponde con la fecha indicada");
+
+        log.info("Justificaciones de prueba creadas para empleado: {}", employee.getFullName());
+    }
+
+    private void createSampleJustification(Employee employee, LocalDate date, 
+                                         DocumentType documentType, JustificationStatus status,
+                                         String reason, String adminComments) {
+        Justification justification = new Justification();
+        justification.setEmployee(employee);
+        justification.setDate(date);
+        justification.setReason(reason);
+        justification.setDocumentType(documentType);
+        justification.setDocumentPath("/sample/document.pdf"); // Path simulado
+        justification.setStatus(status);
+        
+        if (adminComments != null) {
+            justification.setAdminComments(adminComments);
+            if (status != JustificationStatus.PENDING) {
+                justification.setReviewedAt(LocalDateTime.now().minusDays(1));
+            }
+        }
+
+        justifications.save(justification);
     }
 }

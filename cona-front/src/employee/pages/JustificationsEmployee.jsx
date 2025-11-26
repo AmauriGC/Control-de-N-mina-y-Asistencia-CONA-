@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,30 +14,44 @@ import { Upload, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react
 import { alertConfig } from "@/lib/alert-config";
 import { useFieldValidation } from "@/components/criteria/use-validation";
 import { rulesLib } from "@/components/criteria/criteria";
-
-const mockAbsences = [
-  { id: "1", date: "2024-01-15", status: "absent", daysLeft: 1 },
-  { id: "2", date: "2024-01-12", status: "absent", daysLeft: 0 },
-];
-
-const mockJustifications = [
-  {
-    id: "1",
-    employeeId: "E002",
-    employeeName: "María Empleada",
-    date: "2024-01-16",
-    documentType: "Certificado Médico",
-    comments: "Cita médica programada",
-    status: "pending",
-    submittedAt: "2024-01-17 10:30",
-  },
-];
+import { justificationService } from "../../admin/pages/justification/service/justificationService";
+import { useToast } from "@/lib/use-toast";
 
 export default function JustificationsEmployee() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAbsence, setSelectedAbsence] = useState(null);
+  const [justifications, setJustifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const { toast } = useToast();
 
-  const myJustifications = mockJustifications;
+  // Mock data para faltas pendientes (esto debería venir de API de asistencias)
+  const mockAbsences = [
+    { id: "1", date: "2024-01-15", status: "absent", daysLeft: 1 },
+    { id: "2", date: "2024-01-12", status: "absent", daysLeft: 0 },
+  ];
+
+  // Cargar justificaciones del empleado actual
+  const loadMyJustifications = async () => {
+    try {
+      setLoading(true);
+      const response = await justificationService.getMyJustifications();
+      setJustifications(response.content || []);
+    } catch (error) {
+      console.error('Error cargando justificaciones:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las justificaciones",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMyJustifications();
+  }, []);
 
   const handleJustify = (absence) => {
     setSelectedAbsence(absence);
@@ -105,34 +119,50 @@ export default function JustificationsEmployee() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {myJustifications.map((just) => (
-                  <TableRow key={just.id}>
-                    <TableCell className="font-medium">{just.date}</TableCell>
-                    <TableCell>{just.documentType}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{just.submittedAt}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          just.status === "approved"
-                            ? "default"
-                            : just.status === "rejected"
-                            ? "destructive"
-                            : "secondary"
-                        }
-                      >
-                        {just.status === "pending" && <Clock className="h-3 w-3 mr-1" />}
-                        {just.status === "approved" && <CheckCircle className="h-3 w-3 mr-1" />}
-                        {just.status === "rejected" && <XCircle className="h-3 w-3 mr-1" />}
-                        {just.status === "pending"
-                          ? "Pendiente"
-                          : just.status === "approved"
-                          ? "Aprobado"
-                          : "Rechazado"}
-                      </Badge>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      Cargando justificaciones...
                     </TableCell>
-                    <TableCell className="text-sm">{just.reviewComments || "-"}</TableCell>
                   </TableRow>
-                ))}
+                ) : justifications.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      No has enviado justificaciones aún
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  justifications.map((just) => (
+                    <TableRow key={just.id}>
+                      <TableCell className="font-medium">{just.date}</TableCell>
+                      <TableCell>{just.documentType}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {just.createdAt ? new Date(just.createdAt).toLocaleDateString() : 'N/A'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            just.status === "APPROVED"
+                              ? "default"
+                              : just.status === "REJECTED"
+                              ? "destructive"
+                              : "secondary"
+                          }
+                        >
+                          {just.status === "PENDING" && <Clock className="h-3 w-3 mr-1" />}
+                          {just.status === "APPROVED" && <CheckCircle className="h-3 w-3 mr-1" />}
+                          {just.status === "REJECTED" && <XCircle className="h-3 w-3 mr-1" />}
+                          {just.status === "PENDING"
+                            ? "Pendiente"
+                            : just.status === "APPROVED"
+                            ? "Aprobado"
+                            : "Rechazado"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">{just.adminComments || "-"}</TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
@@ -147,17 +177,23 @@ export default function JustificationsEmployee() {
               Falta del {selectedAbsence?.date} - Sube tu documento de justificación
             </DialogDescription>
           </DialogHeader>
-          <JustificationForm absence={selectedAbsence} onClose={() => setIsDialogOpen(false)} />
+          <JustificationForm 
+            absence={selectedAbsence} 
+            onClose={() => setIsDialogOpen(false)}
+            onSuccess={loadMyJustifications}
+          />
         </DialogContent>
       </Dialog>
     </div>
   );
 }
 
-function JustificationForm({ absence, onClose }) {
-  const [formData, setFormData] = useState({ documentType: "", comments: "", file: null });
+function JustificationForm({ absence, onClose, onSuccess }) {
+  const [formData, setFormData] = useState({ documentType: "", reason: "", file: null });
+  const [submitting, setSubmitting] = useState(false);
+  const { toast } = useToast();
 
-  const commentField = useFieldValidation(formData.comments, [
+  const reasonField = useFieldValidation(formData.reason, [
     rulesLib.optional(rulesLib.minLength(5, "Mínimo 5 caracteres")),
     rulesLib.optional(rulesLib.maxLength(300, "Máximo 300 caracteres")),
     rulesLib.optional(rulesLib.textGeneral("Caracteres no permitidos")),
@@ -189,15 +225,39 @@ function JustificationForm({ absence, onClose }) {
       });
       return;
     }
-    if (commentField.value.trim().length > 0 && !commentField.isValid) {
-      await alertConfig.toastError({ title: "Comentarios inválidos", text: commentField.error });
+    if (reasonField.value.trim().length > 0 && !reasonField.isValid) {
+      await alertConfig.toastError({ title: "Razón inválida", text: reasonField.error });
       return;
     }
-    await alertConfig.toastSuccess({
-      title: "Justificación enviada",
-      text: "Tu justificación ha sido enviada para revisión",
-    });
-    onClose();
+    
+    try {
+      setSubmitting(true);
+      
+      const justificationData = {
+        date: absence.date,
+        reason: formData.reason || null,
+        documentType: formData.documentType,
+        documentFile: formData.file
+      };
+      
+      await justificationService.create(justificationData);
+      
+      await alertConfig.toastSuccess({
+        title: "Justificación enviada",
+        text: "Tu justificación ha sido enviada para revisión",
+      });
+      onSuccess(); // Reload justifications
+      onClose();
+    } catch (error) {
+      console.error('Error enviando justificación:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo enviar la justificación. Intenta nuevamente.",
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -212,11 +272,11 @@ function JustificationForm({ absence, onClose }) {
             <SelectValue placeholder="Selecciona un tipo" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="medical">Certificado Médico</SelectItem>
-            <SelectItem value="personal">Permiso Personal</SelectItem>
-            <SelectItem value="emergency">Emergencia Familiar</SelectItem>
-            <SelectItem value="official">Trámite Oficial</SelectItem>
-            <SelectItem value="other">Otro</SelectItem>
+            <SelectItem value="MEDICAL_CERTIFICATE">Certificado Médico</SelectItem>
+            <SelectItem value="PERSONAL_PERMIT">Permiso Personal</SelectItem>
+            <SelectItem value="FAMILY_EMERGENCY">Emergencia Familiar</SelectItem>
+            <SelectItem value="OFFICIAL_PROCEDURE">Trámite Oficial</SelectItem>
+            <SelectItem value="OTHER">Otro</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -240,21 +300,21 @@ function JustificationForm({ absence, onClose }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="comments">Comentarios (opcional)</Label>
+        <Label htmlFor="reason">Razón de la Justificación (opcional)</Label>
         <Textarea
-          id="comments"
-          placeholder="Agrega detalles adicionales..."
-          value={commentField.value}
+          id="reason"
+          placeholder="Explica brevemente la razón de tu ausencia..."
+          value={reasonField.value}
           onChange={(e) => {
-            commentField.onChange(e);
-            setFormData({ ...formData, comments: e.target.value });
+            reasonField.onChange(e);
+            setFormData({ ...formData, reason: e.target.value });
           }}
-          onBlur={commentField.onBlur}
+          onBlur={reasonField.onBlur}
           rows={3}
         />
-        {commentField.showError && <p className="text-xs text-destructive">{commentField.error}</p>}
-        {commentField.value.trim().length > 0 && !commentField.showError && (
-          <p className="text-xs text-muted-foreground">{commentField.value.trim().length}/300</p>
+        {reasonField.showError && <p className="text-xs text-destructive">{reasonField.error}</p>}
+        {reasonField.value.trim().length > 0 && !reasonField.showError && (
+          <p className="text-xs text-muted-foreground">{reasonField.value.trim().length}/300</p>
         )}
       </div>
 
@@ -265,10 +325,10 @@ function JustificationForm({ absence, onClose }) {
         <Button
           type="submit"
           disabled={
-            !formData.documentType || !formData.file || (commentField.value.trim().length > 0 && !commentField.isValid)
+            submitting || !formData.documentType || !formData.file || (reasonField.value.trim().length > 0 && !reasonField.isValid)
           }
         >
-          Enviar Justificación
+          {submitting ? "Enviando..." : "Enviar Justificación"}
         </Button>
       </div>
     </form>

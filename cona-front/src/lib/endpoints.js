@@ -22,8 +22,10 @@ export const API_ENDPOINTS = {
     JUSTIFICATIONS: {
         LIST: "/justifications",
         CREATE: "/justifications",
-        APPROVE: "/justifications/:id/approve",
-        REJECT: "/justifications/:id/reject",
+        MY_JUSTIFICATIONS: "/justifications/my-justifications",
+        GET_BY_ID: "/justifications/:id",
+        DECISION: "/justifications/:id/decision",
+        PENDING_COUNT: "/justifications/pending-count",
     },
     VACATIONS: {
         LIST: "/vacations",

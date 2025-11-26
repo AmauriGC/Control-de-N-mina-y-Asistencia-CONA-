@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,40 +8,44 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Clock, CheckCircle, XCircle, FileText, Eye } from "lucide-react";
+import { Clock, CheckCircle, XCircle, FileText, Eye, RefreshCw } from "lucide-react";
 import { alertConfig } from "@/lib/alert-config";
 import { useFieldValidation } from "@/components/criteria/use-validation";
 import { justificationReviewRules } from "@/components/criteria/criteria";
-
-const mockJustifications = [
-  {
-    id: "1",
-    employeeId: "E002",
-    employeeName: "María Empleada",
-    date: "2024-01-16",
-    documentType: "Certificado Médico",
-    comments: "Cita médica programada",
-    status: "pending",
-    submittedAt: "2024-01-17 10:30",
-  },
-  {
-    id: "2",
-    employeeId: "E003",
-    employeeName: "Juan Pérez",
-    date: "2024-01-16",
-    documentType: "Permiso Personal",
-    comments: "Asunto familiar urgente",
-    status: "pending",
-    submittedAt: "2024-01-17 09:15",
-  },
-];
+import { justificationService } from "./service/justificationService";
+import { useToast } from "@/lib/use-toast";
 
 export default function JustificationsAdmin() {
-  const [justifications, setJustifications] = useState(mockJustifications);
+  const [justifications, setJustifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  const { toast } = useToast();
+
+  // Cargar justificaciones del servidor
+  const loadJustifications = async () => {
+    try {
+      setLoading(true);
+      const response = await justificationService.list();
+      setJustifications(response.content || []);
+    } catch (error) {
+      console.error('Error cargando justificaciones:', error);
+      toast({
+        title: "Error",
+        description: "No se pudieron cargar las justificaciones",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadJustifications();
+  }, []);
   const [selected, setSelected] = useState(null);
   const [open, setOpen] = useState(false);
 
-  const pendingCount = justifications.filter((j) => j.status === "pending").length;
+  const pendingCount = justifications.filter((j) => j.status === "PENDING").length;
 
   const handleReview = (j) => {
     setSelected(j);
@@ -54,11 +58,26 @@ export default function JustificationsAdmin() {
       text: "Esta acción marcará la falta como justificada.",
     });
     if (!ok) return;
-    setJustifications((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, status: "approved", reviewComments: comments } : j))
-    );
-    await alertConfig.toastSuccess({ title: "Justificación aprobada", text: "Marcada como justificada" });
-    setOpen(false);
+    
+    try {
+      setProcessing(true);
+      await justificationService.processJustification(id, {
+        approved: true,
+        comments
+      });
+      await alertConfig.toastSuccess({ title: "Justificación aprobada", text: "Marcada como justificada" });
+      setOpen(false);
+      loadJustifications(); // Recargar lista
+    } catch (error) {
+      console.error('Error aprobando:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo aprobar la justificación",
+        variant: "destructive"
+      });
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const handleReject = async (id, comments) => {
@@ -67,11 +86,26 @@ export default function JustificationsAdmin() {
       text: "La falta se mantendrá sin justificar.",
     });
     if (!ok) return;
-    setJustifications((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, status: "rejected", reviewComments: comments } : j))
-    );
-    await alertConfig.toastInfo({ title: "Justificación rechazada", text: "La falta permanece sin justificar" });
-    setOpen(false);
+    
+    try {
+      setProcessing(true);
+      await justificationService.processJustification(id, {
+        approved: false,
+        comments
+      });
+      await alertConfig.toastInfo({ title: "Justificación rechazada", text: "La falta permanece sin justificar" });
+      setOpen(false);
+      loadJustifications(); // Recargar lista
+    } catch (error) {
+      console.error('Error rechazando:', error);
+      toast({
+        title: "Error",
+        description: "No se pudo rechazar la justificación",
+        variant: "destructive"
+      });
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
@@ -121,23 +155,23 @@ export default function JustificationsAdmin() {
                     </TableCell>
                     <TableCell className="font-medium">{just.date}</TableCell>
                     <TableCell>{just.documentType}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{just.submittedAt}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{just.createdAt ? new Date(just.createdAt).toLocaleDateString() : ''}</TableCell>
                     <TableCell>
                       <Badge
                         variant={
-                          just.status === "approved"
+                          just.status === "APPROVED"
                             ? "default"
-                            : just.status === "rejected"
+                            : just.status === "REJECTED"
                             ? "destructive"
                             : "secondary"
                         }
                       >
-                        {just.status === "pending" && <Clock className="h-3 w-3 mr-1" />}
-                        {just.status === "approved" && <CheckCircle className="h-3 w-3 mr-1" />}
-                        {just.status === "rejected" && <XCircle className="h-3 w-3 mr-1" />}
-                        {just.status === "pending"
+                        {just.status === "PENDING" && <Clock className="h-3 w-3 mr-1" />}
+                        {just.status === "APPROVED" && <CheckCircle className="h-3 w-3 mr-1" />}
+                        {just.status === "REJECTED" && <XCircle className="h-3 w-3 mr-1" />}
+                        {just.status === "PENDING"
                           ? "Pendiente"
-                          : just.status === "approved"
+                          : just.status === "APPROVED"
                           ? "Aprobado"
                           : "Rechazado"}
                       </Badge>
@@ -145,11 +179,11 @@ export default function JustificationsAdmin() {
                     <TableCell>
                       <Button
                         size="sm"
-                        variant={just.status === "pending" ? "default" : "outline"}
+                        variant={just.status === "PENDING" ? "default" : "outline"}
                         onClick={() => handleReview(just)}
                       >
                         <Eye className="h-4 w-4 mr-1" />
-                        {just.status === "pending" ? "Revisar" : "Ver"}
+                        {just.status === "PENDING" ? "Revisar" : "Ver"}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -195,12 +229,12 @@ function ReviewForm({ justification, onApprove, onReject, onClose }) {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Fecha de Envío</p>
-            <p className="font-medium">{justification.submittedAt}</p>
+            <p className="font-medium">{justification.createdAt ? new Date(justification.createdAt).toLocaleDateString() : 'N/A'}</p>
           </div>
         </div>
         <div>
-          <p className="text-sm text-muted-foreground">Comentarios del Empleado</p>
-          <p className="font-medium">{justification.comments || "Sin comentarios"}</p>
+          <p className="text-sm text-muted-foreground">Razón de la Justificación</p>
+          <p className="font-medium">{justification.reason || "Sin razón especificada"}</p>
         </div>
         <div>
           <p className="text-sm text-muted-foreground mb-2">Documento Adjunto</p>
@@ -211,7 +245,7 @@ function ReviewForm({ justification, onApprove, onReject, onClose }) {
         </div>
       </div>
 
-      {justification.status === "pending" ? (
+      {justification.status === "PENDING" ? (
         <>
           <div className="space-y-2">
             <Label htmlFor="adminComments">Comentarios de Revisión *</Label>
@@ -256,7 +290,7 @@ function ReviewForm({ justification, onApprove, onReject, onClose }) {
         <div className="space-y-2">
           <p className="text-sm font-medium">Revisado</p>
           <div className="p-3 bg-muted rounded-lg">
-            <p className="text-sm">{justification.reviewComments}</p>
+            <p className="text-sm">{justification.adminComments || "Sin comentarios del administrador"}</p>
           </div>
           <Button variant="outline" className="w-full" onClick={onClose}>
             Cerrar

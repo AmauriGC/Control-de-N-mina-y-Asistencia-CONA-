@@ -43,7 +43,16 @@ public class Justification {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private JustificationStatus status;
+    private JustificationStatus status = JustificationStatus.PENDING;
+
+    @Column(name = "admin_comments", length = 500)
+    private String adminComments;
+
+    @Column(name = "reviewed_at")
+    private LocalDateTime reviewedAt;
+
+    @Column(name = "reviewed_by")
+    private Long reviewedBy;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

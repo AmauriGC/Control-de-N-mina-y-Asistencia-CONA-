@@ -25,14 +25,20 @@ public class SecurityConfig {
     private static final String[] ADMIN_ENDPOINTS = {
             "/employees",
             "/employees/*/status",
-            "/system-config/**"
+            "/system-config/**",
+            "/justifications",
+            "/justifications/*/decision",
+            "/justifications/pending-count"
     };
 
     private static final String[] EMPLOYEE_ENDPOINTS = {
+            "/justifications/my-justifications"
     };
 
     private static final String[] COMMON_ENDPOINTS = {
             "/employees/*",
+            "/justifications",
+            "/justifications/*"
     };
 
     private static final String[] PUBLIC_ENDPOINTS = {
