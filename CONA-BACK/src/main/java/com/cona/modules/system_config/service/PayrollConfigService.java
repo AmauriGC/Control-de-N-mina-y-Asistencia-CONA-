@@ -9,6 +9,7 @@ import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,15 +51,19 @@ public class PayrollConfigService {
     }
 
     public PayrollConfigResponse getCurrentConfig() {
-        PayrollConfig config = payrollConfigRepository.findById(1L)
-                .orElseGet(() -> {
-                    List<PayrollConfig> allConfigs = payrollConfigRepository.findAll();
-                    if (allConfigs.isEmpty()) {
-                        throw new BusinessException("NOT_FOUND", "No se ha establecido una configuración de nómina.");
-                    }
-                    return allConfigs.get(0);
-                });
-
-        return toDto(config);
+        Optional<PayrollConfig> configOpt = payrollConfigRepository.findById(1L);
+        if (configOpt.isPresent()) {
+            return toDto(configOpt.get());
+        } else {
+            // Return default config
+            PayrollConfigResponse defaultConfig = new PayrollConfigResponse();
+            defaultConfig.setId(null);
+            defaultConfig.setIsrFixed(BigDecimal.valueOf(100.0));
+            defaultConfig.setImssFixed(BigDecimal.valueOf(100.0));
+            defaultConfig.setLatePenalty(BigDecimal.valueOf(0));
+            defaultConfig.setCreatedAt(null);
+            defaultConfig.setUpdatedAt(null);
+            return defaultConfig;
+        }
     }
 }

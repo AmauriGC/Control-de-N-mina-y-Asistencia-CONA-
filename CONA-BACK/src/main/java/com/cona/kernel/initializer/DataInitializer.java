@@ -6,6 +6,10 @@ import com.cona.modules.auth.entity.User;
 import com.cona.modules.auth.repository.UserRepository;
 import com.cona.modules.system_config.entity.WorkSchedule;
 import com.cona.modules.system_config.repository.WorkScheduleRepository;
+import com.cona.modules.employees.entity.Employee;
+import com.cona.modules.employees.enums.ContractType;
+import com.cona.modules.employees.enums.EmployeeStatus;
+import com.cona.modules.employees.repository.EmployeeRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +19,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Component
@@ -26,6 +32,7 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository users;
     private final PasswordEncoder encoder;
     private final WorkScheduleRepository workSchedules;
+    private final EmployeeRepository employees;
 
     @Value("${app.seed.admin.email}")
     private String adminEmail;
@@ -41,10 +48,12 @@ public class DataInitializer implements CommandLineRunner {
 
     public DataInitializer(UserRepository users,
                            PasswordEncoder encoder,
-                           WorkScheduleRepository workSchedules) {
+                           WorkScheduleRepository workSchedules,
+                           EmployeeRepository employees) {
         this.users = users;
         this.encoder = encoder;
         this.workSchedules = workSchedules;
+        this.employees = employees;
     }
 
     @Override
@@ -77,6 +86,9 @@ public class DataInitializer implements CommandLineRunner {
                 5,
                 "Turno nocturno"
         );
+
+        // Empleado de prueba
+        seedEmployee();
     }
 
     private void seedUser(String email, String rawPassword, Role role) {
@@ -120,5 +132,46 @@ public class DataInitializer implements CommandLineRunner {
         workSchedules.save(ws);
 
         log.info("Horario laboral creado: {}", name);
+    }
+
+    private void seedEmployee() {
+        User employeeUser = users.findByEmail(Sanitizer.trimAndLower(employeeEmail)).orElse(null);
+        if (employeeUser == null) {
+            log.error("Usuario empleado no encontrado");
+            return;
+        }
+
+        if (employees.findByUserId(employeeUser.getId()).isPresent()) {
+            log.info("Empleado ya existe para el usuario: {}", employeeEmail);
+            return;
+        }
+
+        WorkSchedule workSchedule = workSchedules.findAll().stream().findFirst().orElse(null);
+        if (workSchedule == null) {
+            log.error("No hay horarios laborales disponibles");
+            return;
+        }
+
+        String key;
+        do {
+            key = String.format("%05d", (int) (Math.random() * 100000));
+        } while (employees.existsByEmployeeKey(key));
+
+        Employee employee = new Employee();
+        employee.setUser(employeeUser);
+        employee.setEmployeeKey(key);
+        employee.setFullName("Empleado de Prueba");
+        employee.setPhone("555-1234");
+        employee.setPosition("Desarrollador");
+        employee.setRfc("XAXX010101000");
+        employee.setHourlyRate(BigDecimal.valueOf(100.00));
+        employee.setContractType(ContractType.FULL_TIME);
+        employee.setContractStartDate(LocalDate.now());
+        employee.setStatus(EmployeeStatus.ACTIVE);
+        employee.setWorkSchedule(workSchedule);
+
+        employees.save(employee);
+
+        log.info("Empleado creado: {} con clave {}", employee.getFullName(), key);
     }
 }

@@ -117,6 +117,11 @@ public class EmployeeService {
         return toDto(employee);
     }
 
+    public EmployeeResponseDto getByUserId(Long userId) {
+        Employee employee = employeeRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Empleado no encontrado para el usuario: " + userId));
+        return toDto(employee);
+    }
 
     @Transactional
     public void toggleStatus(Long id) {

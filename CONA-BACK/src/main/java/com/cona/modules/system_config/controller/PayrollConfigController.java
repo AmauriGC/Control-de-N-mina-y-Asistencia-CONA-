@@ -9,7 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/payroll-config")
+@RequestMapping("/system-config/payroll-config")
 @RequiredArgsConstructor
 public class PayrollConfigController {
 
