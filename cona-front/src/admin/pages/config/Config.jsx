@@ -1,12 +1,25 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TimePicker } from "@/components/ui/time-picker";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -19,16 +32,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Settings, Clock, DollarSign, Calendar, Plus, Trash2, Save } from "lucide-react";
 import { alertConfig } from "@/lib/alert-config";
 import { useFieldValidation, makeRules, rulesLib } from "@/components/criteria/use-validation";
-
-const mockHolidays = [
-  { id: "1", name: "Año Nuevo", date: "2024-01-01", isRecurring: true },
-  { id: "2", name: "Día de la Constitución", date: "2024-02-05", isRecurring: true },
-  { id: "3", name: "Natalicio de Benito Juárez", date: "2024-03-18", isRecurring: true },
-  { id: "4", name: "Día del Trabajo", date: "2024-05-01", isRecurring: true },
-  { id: "5", name: "Día de la Independencia", date: "2024-09-16", isRecurring: true },
-  { id: "6", name: "Día de la Revolución", date: "2024-11-18", isRecurring: true },
-  { id: "7", name: "Navidad", date: "2024-12-25", isRecurring: true },
-];
+import { systemConfigService } from "./service/configService";
 
 const initialConfig = {
   workScheduleStart: "09:00",
@@ -38,8 +42,8 @@ const initialConfig = {
   payrollDeduction: 200,
   justificationDeadlineDays: 2,
   contractAlertDays: 30,
-  isrFixed: 100.0,
-  imssFixed: 100.0,
+  isrFixed: 0,
+  imssFixed: 0,
   salarioMinimo: 248.93,
   diasPagoMes: 15,
   horasLaboralesDia: 8,
@@ -50,9 +54,64 @@ const initialConfig = {
 
 export default function ConfigPage() {
   const [config, setConfig] = useState(initialConfig);
-  const [holidays, setHolidays] = useState(mockHolidays);
+  const [holidays, setHolidays] = useState([]);
+  const [workSchedules, setWorkSchedules] = useState([]);
   const [isHolidayDialogOpen, setIsHolidayDialogOpen] = useState(false);
+  const [isWorkScheduleDialogOpen, setIsWorkScheduleDialogOpen] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const response = await systemConfigService.payrollConfig.get();
+        if (response.success) {
+          setConfig((prev) => ({
+            ...prev,
+            isrFixed: response.data.isrFixed,
+            imssFixed: response.data.imssFixed,
+            descuentoRetardo: response.data.latePenalty,
+          }));
+        } else if (response.status === 422) {
+          // No config set, use initial
+        } else {
+          alertConfig.toastError({ title: "Error", text: "No se pudo cargar la configuración de nómina" });
+        }
+      } catch (error) {
+        console.error("Error loading payroll config:", error);
+        if (error.response?.status !== 422) {
+          alertConfig.toastError({ title: "Error", text: "No se pudo cargar la configuración de nómina" });
+        }
+      }
+    };
+
+    const loadHolidays = async () => {
+      try {
+        const response = await systemConfigService.holidays.getAll();
+        if (response.success) {
+          setHolidays(response.data);
+        }
+      } catch (error) {
+        console.error("Error loading holidays:", error);
+        alertConfig.toastError({ title: "Error", text: "No se pudieron cargar los días festivos" });
+      }
+    };
+
+    const loadWorkSchedules = async () => {
+      try {
+        const response = await systemConfigService.workSchedules.getAll();
+        if (response.success) {
+          setWorkSchedules(response.data);
+        }
+      } catch (error) {
+        console.error("Error loading work schedules:", error);
+        alertConfig.toastError({ title: "Error", text: "No se pudieron cargar los horarios de trabajo" });
+      }
+    };
+
+    loadConfig();
+    loadHolidays();
+    loadWorkSchedules();
+  }, []);
 
   const handleConfigChange = (field, value) => {
     setConfig((prev) => ({ ...prev, [field]: value }));
@@ -120,12 +179,40 @@ export default function ConfigPage() {
       alertConfig.toastError({ title: "Errores de validación", text: "Corrige los campos marcados" });
       return;
     }
-    await alertConfig.toastSuccess({ title: "Configuración guardada", text: "Los cambios han sido aplicados" });
-    setHasChanges(false);
+    try {
+      const payrollData = {
+        isrFixed: config.isrFixed,
+        imssFixed: config.imssFixed,
+        latePenalty: config.descuentoRetardo,
+      };
+      await systemConfigService.payrollConfig.update(payrollData);
+      alertConfig.toastSuccess({ title: "Configuración guardada", text: "Los cambios han sido aplicados" });
+      setHasChanges(false);
+    } catch (error) {
+      console.error("Error saving config:", error);
+      alertConfig.toastError({ title: "Error", text: "No se pudo guardar la configuración" });
+    }
   };
-  const handleDeleteHoliday = (id) => {
-    setHolidays((prev) => prev.filter((h) => h.id !== id));
-    alertConfig.toastInfo({ title: "Día festivo eliminado", text: "El día festivo ha sido removido" });
+  const handleDeleteHoliday = async (id) => {
+    try {
+      await systemConfigService.holidays.delete(id);
+      setHolidays((prev) => prev.filter((h) => h.id !== id));
+      alertConfig.toastInfo({ title: "Día festivo eliminado", text: "El día festivo ha sido removido" });
+    } catch (error) {
+      console.error("Error deleting holiday:", error);
+      alertConfig.toastError({ title: "Error", text: "No se pudo eliminar el día festivo" });
+    }
+  };
+
+  const handleDeleteWorkSchedule = async (id) => {
+    try {
+      await systemConfigService.workSchedules.delete(id);
+      setWorkSchedules((prev) => prev.filter((ws) => ws.id !== id));
+      alertConfig.toastInfo({ title: "Horario de trabajo eliminado", text: "El horario ha sido removido" });
+    } catch (error) {
+      console.error("Error deleting work schedule:", error);
+      alertConfig.toastError({ title: "Error", text: "No se pudo eliminar el horario de trabajo" });
+    }
   };
 
   return (
@@ -187,12 +274,18 @@ export default function ConfigPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <DollarSign className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle>Parámetros de Nómina</CardTitle>
-              <CardDescription>Configuración de pagos y descuentos</CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <DollarSign className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle>Parámetros de Nómina</CardTitle>
+                <CardDescription>Configuración de pagos y descuentos</CardDescription>
+              </div>
             </div>
+            <Button onClick={handleSaveConfig} className="gap-2">
+              <Save className="h-4 w-4" />
+              Guardar
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -430,9 +523,18 @@ export default function ConfigPage() {
                 </DialogHeader>
                 <HolidayForm
                   onClose={() => setIsHolidayDialogOpen(false)}
-                  onAdd={(h) => {
-                    setHolidays((prev) => [...prev, h]);
-                    setIsHolidayDialogOpen(false);
+                  onAdd={async (holidayData) => {
+                    try {
+                      const response = await systemConfigService.holidays.create(holidayData);
+                      if (response.success) {
+                        setHolidays((prev) => [...prev, response.data]);
+                        setIsHolidayDialogOpen(false);
+                        alertConfig.toastSuccess({ title: "Día festivo agregado", text: `${holidayData.name} ha sido agregado` });
+                      }
+                    } catch (error) {
+                      console.error("Error creating holiday:", error);
+                      alertConfig.toastError({ title: "Error", text: "No se pudo agregar el día festivo" });
+                    }
                   }}
                 />
               </DialogContent>
@@ -447,6 +549,7 @@ export default function ConfigPage() {
                   <TableHead>Nombre</TableHead>
                   <TableHead>Fecha</TableHead>
                   <TableHead>Tipo</TableHead>
+                  <TableHead>Descripción</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
               </TableHeader>
@@ -462,12 +565,89 @@ export default function ConfigPage() {
                       })}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={holiday.isRecurring ? "default" : "secondary"}>
-                        {holiday.isRecurring ? "Recurrente" : "Único"}
+                      <Badge variant={holiday.type === "OBLIGATORY" ? "default" : "secondary"}>
+                        {holiday.type === "OBLIGATORY" ? "Obligatorio" : "Opcional"}
                       </Badge>
                     </TableCell>
+                    <TableCell>{holiday.description || "-"}</TableCell>
                     <TableCell>
                       <Button variant="ghost" size="sm" onClick={() => handleDeleteHoliday(holiday.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Clock className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle>Horarios de Trabajo</CardTitle>
+                <CardDescription>Define horarios de entrada y salida para diferentes turnos</CardDescription>
+              </div>
+            </div>
+            <Dialog open={isWorkScheduleDialogOpen} onOpenChange={setIsWorkScheduleDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Agregar Horario
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Agregar Horario de Trabajo</DialogTitle>
+                  <DialogDescription>Define un nuevo horario de trabajo</DialogDescription>
+                </DialogHeader>
+                <WorkScheduleForm
+                  onClose={() => setIsWorkScheduleDialogOpen(false)}
+                  onAdd={async (workScheduleData) => {
+                    try {
+                      const response = await systemConfigService.workSchedules.create(workScheduleData);
+                      if (response.success) {
+                        setWorkSchedules((prev) => [...prev, response.data]);
+                        setIsWorkScheduleDialogOpen(false);
+                        alertConfig.toastSuccess({ title: "Horario agregado", text: `${workScheduleData.name} ha sido agregado` });
+                      }
+                    } catch (error) {
+                      console.error("Error creating work schedule:", error);
+                      alertConfig.toastError({ title: "Error", text: "No se pudo agregar el horario de trabajo" });
+                    }
+                  }}
+                />
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nombre</TableHead>
+                  <TableHead>Entrada</TableHead>
+                  <TableHead>Salida</TableHead>
+                  <TableHead>Tolerancia (min)</TableHead>
+                  <TableHead>Descripción</TableHead>
+                  <TableHead>Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {workSchedules.map((ws) => (
+                  <TableRow key={ws.id}>
+                    <TableCell className="font-medium">{ws.name}</TableCell>
+                    <TableCell>{ws.entryTime}</TableCell>
+                    <TableCell>{ws.exitTime}</TableCell>
+                    <TableCell>{ws.toleranceMinutes || "-"}</TableCell>
+                    <TableCell>{ws.description || "-"}</TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" onClick={() => handleDeleteWorkSchedule(ws.id)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </TableCell>
@@ -493,9 +673,9 @@ function Field({ label, helper, children }) {
 }
 
 function HolidayForm({ onClose, onAdd }) {
-  const [formData, setFormData] = useState({ name: "", date: "", isRecurring: true });
+  const [formData, setFormData] = useState({ name: "", holidayDate: "", type: "OBLIGATORY", description: "" });
   const nameField = useFieldValidation(formData.name, makeRules(rulesLib.required("El nombre es obligatorio")));
-  const dateField = useFieldValidation(formData.date, makeRules(rulesLib.required("La fecha es obligatoria")));
+  const dateField = useFieldValidation(formData.holidayDate, makeRules(rulesLib.required("La fecha es obligatoria")));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -503,14 +683,13 @@ function HolidayForm({ onClose, onAdd }) {
       await alertConfig.toastError({ title: "Campos incompletos", text: "Completa todos los campos requeridos" });
       return;
     }
-    const newHoliday = {
-      id: Date.now().toString(),
+    const holidayData = {
       name: nameField.value,
-      date: dateField.value,
-      isRecurring: formData.isRecurring,
+      holidayDate: dateField.value,
+      type: formData.type,
+      description: formData.description,
     };
-    onAdd(newHoliday);
-    await alertConfig.toastSuccess({ title: "Día festivo agregado", text: `${nameField.value} ha sido agregado` });
+    onAdd(holidayData);
   };
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -532,7 +711,7 @@ function HolidayForm({ onClose, onAdd }) {
           type="date"
           value={dateField.value}
           onChange={(e) => {
-            setFormData({ ...formData, date: e.target.value });
+            setFormData({ ...formData, holidayDate: e.target.value });
             dateField.onChange(e);
           }}
           onBlur={dateField.onBlur}
@@ -540,24 +719,130 @@ function HolidayForm({ onClose, onAdd }) {
         />
         {dateField.showError && dateField.error && <p className="text-[12px] text-destructive">{dateField.error}</p>}
       </Field>
-      <div className="flex items-center gap-3">
-        <input
-          id="recurring"
-          type="checkbox"
-          checked={formData.isRecurring}
-          onChange={(e) => setFormData({ ...formData, isRecurring: e.target.checked })}
-          className="w-4 h-4 rounded border-input"
+      <Field label="Tipo *">
+        <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Selecciona el tipo" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="OBLIGATORY">Obligatorio</SelectItem>
+            <SelectItem value="OPTIONAL">Opcional</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+      <Field label="Descripción">
+        <Input
+          placeholder="Descripción opcional"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
         />
-        <Label htmlFor="recurring" className="cursor-pointer">
-          Festivo recurrente (cada año)
-        </Label>
-      </div>
+      </Field>
       <div className="flex justify-end gap-3 pt-4">
         <Button type="button" variant="outline" onClick={onClose}>
           Cancelar
         </Button>
         <Button type="submit" disabled={!nameField.isValid || !dateField.isValid}>
           Agregar Festivo
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function WorkScheduleForm({ onClose, onAdd }) {
+  const [formData, setFormData] = useState({ name: "", entryTime: "", exitTime: "", toleranceMinutes: "", description: "" });
+  const nameField = useFieldValidation(formData.name, makeRules(rulesLib.required("El nombre es obligatorio")));
+  const entryTimeField = useFieldValidation(formData.entryTime, makeRules(rulesLib.required("La hora de entrada es obligatoria")));
+  const exitTimeField = useFieldValidation(formData.exitTime, makeRules(rulesLib.required("La hora de salida es obligatoria")));
+  const toleranceMinutesField = useFieldValidation(formData.toleranceMinutes, makeRules(
+    rulesLib.required("Requerido"),
+    rulesLib.integerRange(0, 60, "0-60 minutos")
+  ));
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!nameField.isValid || !entryTimeField.isValid || !exitTimeField.isValid || !toleranceMinutesField.isValid) {
+      await alertConfig.toastError({ title: "Campos incompletos", text: "Completa todos los campos requeridos" });
+      return;
+    }
+    const workScheduleData = {
+      name: nameField.value,
+      entryTime: entryTimeField.value,
+      exitTime: exitTimeField.value,
+      toleranceMinutes: parseInt(toleranceMinutesField.value),
+      description: formData.description,
+    };
+    onAdd(workScheduleData);
+  };
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <Field label="Nombre del Horario *">
+        <Input
+          placeholder="Ej: Turno Matutino"
+          value={nameField.value}
+          onChange={(e) => {
+            setFormData({ ...formData, name: e.target.value });
+            nameField.onChange(e);
+          }}
+          onBlur={nameField.onBlur}
+          aria-invalid={nameField.showError && !!nameField.error}
+        />
+        {nameField.showError && nameField.error && <p className="text-[12px] text-destructive">{nameField.error}</p>}
+      </Field>
+      <Field label="Hora de Entrada *">
+        <TimePicker
+          value={formData.entryTime}
+          onChange={(v) => {
+            setFormData({ ...formData, entryTime: v });
+            entryTimeField.onChange({ target: { value: v } });
+          }}
+          onBlur={entryTimeField.onBlur}
+          aria-invalid={entryTimeField.showError && !!entryTimeField.error}
+        />
+        {entryTimeField.showError && entryTimeField.error && <p className="text-[12px] text-destructive">{entryTimeField.error}</p>}
+      </Field>
+      <Field label="Hora de Salida *">
+        <TimePicker
+          value={formData.exitTime}
+          onChange={(v) => {
+            setFormData({ ...formData, exitTime: v });
+            exitTimeField.onChange({ target: { value: v } });
+          }}
+          onBlur={exitTimeField.onBlur}
+          aria-invalid={exitTimeField.showError && !!exitTimeField.error}
+        />
+        {exitTimeField.showError && exitTimeField.error && <p className="text-[12px] text-destructive">{exitTimeField.error}</p>}
+      </Field>
+      <Field label="Tolerancia (min) *" helper="Minutos de tolerancia para entrada y salida">
+        <Input
+          type="number"
+          value={toleranceMinutesField.value}
+          min={0}
+          max={60}
+          onChange={(e) => {
+            toleranceMinutesField.onChange(e);
+            setFormData({ ...formData, toleranceMinutes: e.target.value });
+          }}
+          onBlur={toleranceMinutesField.onBlur}
+          aria-invalid={toleranceMinutesField.showError && !!toleranceMinutesField.error}
+        />
+        {toleranceMinutesField.showError && toleranceMinutesField.error && (
+          <p className="text-xs text-destructive">{toleranceMinutesField.error}</p>
+        )}
+      </Field>
+      <Field label="Descripción">
+        <Input
+          placeholder="Descripción opcional"
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+        />
+      </Field>
+      <div className="flex justify-end gap-3 pt-4">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancelar
+        </Button>
+        <Button type="submit" disabled={!nameField.isValid || !entryTimeField.isValid || !exitTimeField.isValid || !toleranceMinutesField.isValid}>
+          Agregar Horario
         </Button>
       </div>
     </form>

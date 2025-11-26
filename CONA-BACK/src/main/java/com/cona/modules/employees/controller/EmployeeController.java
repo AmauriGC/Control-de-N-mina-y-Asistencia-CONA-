@@ -48,4 +48,10 @@ public class EmployeeController {
         return ApiResponse.success("Empleado actualizado correctamente", service.update(id, dto));
     }
 
+    @GetMapping("/by-user/{userId}")
+    public ApiResponse<EmployeeResponseDto> getByUserId(@PathVariable Long userId) {
+        EmployeeResponseDto response = service.getByUserId(userId);
+        return ApiResponse.success("Empleado obtenido exitosamente", response);
+    }
+
 }

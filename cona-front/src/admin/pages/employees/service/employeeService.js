@@ -24,6 +24,12 @@ export const employeeService = {
         return response.data;
     },
 
+    // Obtener empleado por ID de usuario
+    getByUserId: async (userId) => {
+        const response = await axiosClient.get(API_ENDPOINTS.EMPLOYEES.GET_BY_USER_ID.replace(':userId', userId));
+        return response.data;
+    },
+
     // Cambiar estado del empleado
     toggleStatus: async (id) => {
         const response = await axiosClient.patch(API_ENDPOINTS.EMPLOYEES.TOGGLE_STATUS.replace(':id', id));

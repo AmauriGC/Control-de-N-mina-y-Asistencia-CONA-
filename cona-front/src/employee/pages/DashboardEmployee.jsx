@@ -22,11 +22,13 @@ export default function DashboardEmployee() {
   const loadProfile = async () => {
     try {
       setProfileLoading(true)
-      const response = await employeeService.getById(user.id)
+      const response = await employeeService.getByUserId(user.id)
       if (response.success) {
         setProfile(response.data)
       } else {
-        alertConfig.toastError({ title: "Error", text: response.message })
+        if (response.message) {
+          alertConfig.toastError({ title: "Error", text: response.message })
+        }
       }
     } catch (error) {
       alertConfig.toastError({ title: "Error", text: "No se pudo cargar el perfil" })

@@ -10,6 +10,7 @@ export const API_ENDPOINTS = {
         LIST: "/employees",
         CREATE: "/employees",
         GET_BY_ID: "/employees/:id",
+        GET_BY_USER_ID: "/employees/by-user/:userId",
         UPDATE: "/employees/:id",
         TOGGLE_STATUS: "/employees/:id/status",
     },
@@ -33,5 +34,36 @@ export const API_ENDPOINTS = {
     CONFIG: {
         GET: "/config",
         UPDATE: "/config",
+    },
+    HOLIDAYS: {
+        LIST: "/holidays",
+        CREATE: "/holidays",
+        GET_BY_ID: "/holidays/:id",
+        UPDATE: "/holidays/:id",
+        DELETE: "/holidays/:id",
+    },
+    PAYROLL_CONFIG: {
+        GET: "/payroll-config",
+        UPDATE: "/payroll-config",
+    },
+    SYSTEM_CONFIG: {
+        HOLIDAYS: {
+            LIST: "/system-config/holidays",
+            CREATE: "/system-config/holidays",
+            GET_BY_ID: "/system-config/holidays/:id",
+            UPDATE: "/system-config/holidays/:id",
+            DELETE: "/system-config/holidays/:id",
+        },
+        WORK_SCHEDULES: {
+            LIST: "/system-config/work-schedules",
+            CREATE: "/system-config/work-schedules",
+            GET_BY_ID: "/system-config/work-schedules/:id",
+            UPDATE: "/system-config/work-schedules/:id",
+            DELETE: "/system-config/work-schedules/:id",
+        },
+        PAYROLL_CONFIG: {
+            GET: "/system-config/payroll-config",
+            UPDATE: "/system-config/payroll-config",
+        },
     },
 };
