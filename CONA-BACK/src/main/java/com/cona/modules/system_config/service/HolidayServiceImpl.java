@@ -22,16 +22,16 @@ public class HolidayServiceImpl implements HolidayService {
     @Override
     public HolidayResponse create(HolidayRequest request) {
 
-        if (request.getDate().isBefore(LocalDate.now().withDayOfYear(1))) {
+        if (request.getHolidayDate().isBefore(LocalDate.now().withDayOfYear(1))) {
             throw new BusinessException("INVALID_DATE", "La fecha debe ser del año en curso o futura");
         }
 
-        if (repository.existsByDate(request.getDate())) {
-            throw new BusinessException("DUPLICATED_HOLIDAY_DATE", "Ya existe un festivo registrado para la fecha: " + request.getDate());
+        if (repository.existsByDate(request.getHolidayDate())) {
+            throw new BusinessException("DUPLICATED_HOLIDAY_DATE", "Ya existe un festivo registrado para la fecha: " + request.getHolidayDate());
         }
 
         Holiday holiday = new Holiday();
-        holiday.setDate(request.getDate());
+        holiday.setDate(request.getHolidayDate());
         holiday.setName(request.getName());
         holiday.setType(request.getType());
         holiday.setDescription(request.getDescription());
@@ -47,16 +47,16 @@ public class HolidayServiceImpl implements HolidayService {
         Holiday holiday = repository.findById(id)
                 .orElseThrow(() -> new BusinessException("NOT_FOUND_HOLIDAY", "No se encontró el día festivo con ID " + id));
 
-        if (!holiday.getDate().equals(request.getDate())) {
-            if (repository.existsByDateAndIdNot(request.getDate(), id)) {
-                throw new BusinessException("HOLIDAY_DATE_ALREADY_EXIST", "Ya existe un festivo registrado para la fecha: " + request.getDate());
+        if (!holiday.getDate().equals(request.getHolidayDate())) {
+            if (repository.existsByDateAndIdNot(request.getHolidayDate(), id)) {
+                throw new BusinessException("HOLIDAY_DATE_ALREADY_EXIST", "Ya existe un festivo registrado para la fecha: " + request.getHolidayDate());
             }
 
-            if (request.getDate().isBefore(LocalDate.now().withDayOfYear(1))) {
+            if (request.getHolidayDate().isBefore(LocalDate.now().withDayOfYear(1))) {
                 throw new BusinessException("INVALID_DATE", "La fecha debe ser del año en curso o futura");
             }
 
-            holiday.setDate(request.getDate());
+            holiday.setDate(request.getHolidayDate());
         }
 
         holiday.setName(request.getName());

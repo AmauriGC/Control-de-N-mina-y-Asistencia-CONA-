@@ -11,7 +11,7 @@ import java.time.LocalDate;
 public class HolidayRequest {
 
     @NotNull(message = "La fecha del día festivo es obligatoria")
-    private LocalDate date;
+    private LocalDate holidayDate;
 
     @NotBlank(message = "El nombre del día festivo es obligatorio")
     private String name;

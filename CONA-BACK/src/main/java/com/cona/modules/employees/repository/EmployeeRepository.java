@@ -6,6 +6,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Optional;
+
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     boolean existsByRfc(String rfc);
     boolean existsByEmployeeKey(String employeeKey);
@@ -13,5 +15,5 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     Page<Employee> findByFullNameContainingIgnoreCase(String name, Pageable pageable);
     Page<Employee> findByStatusAndFullNameContainingIgnoreCase(EmployeeStatus status, String name, Pageable pageable);
     boolean existsByRfcAndIdNot(String rfc, Long id);
-
+    Optional<Employee> findByUserId(Long userId);
 }
