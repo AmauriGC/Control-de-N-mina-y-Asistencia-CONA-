@@ -25,21 +25,32 @@ public class SecurityConfig {
     private static final String[] ADMIN_ENDPOINTS = {
             "/employees",
             "/employees/*/status",
-            "/system-config/**"
+            "/system-config/**",
+            "/leave-requests",
+            "/leave-requests/*/review/user/*",
+            "/leave-requests/stats/pending",
+            "/attendance/today"
     };
 
     private static final String[] EMPLOYEE_ENDPOINTS = {
+            "/leave-requests/user/*/requests",
+            "/attendance/employee/*",
+            "/attendance/employee/*/range",
+            "/attendance/employee/*/stats"
     };
 
     private static final String[] COMMON_ENDPOINTS = {
             "/employees/*",
+            "/leave-requests/*",
+            "/leave-requests/user/*/***"
     };
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/auth/login",
             "/auth/register",
             "/auth/forgot-password",
-            "/auth/reset-password"
+            "/auth/reset-password",
+            "/attendance/check-in-out"
     };
 
     @Bean
@@ -55,11 +66,11 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
 
+                        // Solo EMPLOYEE (more specific patterns first)
+                        .requestMatchers(EMPLOYEE_ENDPOINTS).hasRole("EMPLOYEE")
+
                         // Solo ADMIN
                         .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")
-
-                        // Solo EMPLOYEE
-                        .requestMatchers(EMPLOYEE_ENDPOINTS).hasRole("EMPLOYEE")
 
                         // ADMIN o EMPLOYEE
                         .requestMatchers(COMMON_ENDPOINTS).hasAnyRole("ADMIN", "EMPLOYEE")

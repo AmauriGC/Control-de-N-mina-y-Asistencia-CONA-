@@ -11,10 +11,13 @@ const axiosClient = axios.create({
 
 axiosClient.interceptors.request.use(
     (config) => {
-        const token = tokenManager.getToken();
+        // Solo agregar token si no se especifica skipAuth
+        if (!config.skipAuth) {
+            const token = tokenManager.getToken();
 
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
         }
 
         return config;

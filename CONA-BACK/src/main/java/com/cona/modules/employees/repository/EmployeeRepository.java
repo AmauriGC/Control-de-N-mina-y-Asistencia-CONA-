@@ -16,4 +16,5 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     Page<Employee> findByStatusAndFullNameContainingIgnoreCase(EmployeeStatus status, String name, Pageable pageable);
     boolean existsByRfcAndIdNot(String rfc, Long id);
     Optional<Employee> findByUserId(Long userId);
+    Optional<Employee> findByEmployeeKey(String employeeKey);
 }

@@ -18,6 +18,7 @@ import Config from "@/admin/pages/config/Config";
 import VacationsEmployee from "@/employee/pages/VacationsEmployee";
 import JustificationsEmployee from "@/employee/pages/JustificationsEmployee";
 import Attendance from "@/employee/pages/Attendance";
+import AttendanceTerminal from "@/pages/AttendanceTerminal";
 
 function App() {
     return (
@@ -28,6 +29,7 @@ function App() {
                     <Route path="/login" element={<Login/>}/>
                     <Route path="/forgot-password" element={<ForgotPassword/>}/>
                     <Route path="/reset-password" element={<ResetPassword/>}/>
+                    <Route path="/attendance-terminal" element={<AttendanceTerminal/>}/>
 
                     <Route
                         path="/dashboard"

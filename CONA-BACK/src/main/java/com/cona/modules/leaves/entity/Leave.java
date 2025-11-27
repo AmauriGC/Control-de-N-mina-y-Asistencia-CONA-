@@ -1,6 +1,5 @@
-package com.cona.modules.attendance.entity;
+package com.cona.modules.leaves.entity;
 
-import com.cona.modules.attendance.enums.AttendanceStatus;
 import com.cona.modules.employees.entity.Employee;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -10,51 +9,36 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Entity
-@Table(name = "attendances")
+@Table(name = "leaves")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-public class Attendance {
+public class Leave {
+    
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
+    
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "leave_request_id", nullable = false)
+    private LeaveRequest leaveRequest;
+    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
-
-    @Column(nullable = false)
-    private LocalDate date;
-
-    private LocalTime checkInTime;
-
-    private LocalTime checkOutTime;
-
-    @Column(name = "hours_worked")
-    private Double hoursWorked;
-
-    @Column(name = "daily_salary", precision = 10, scale = 2)
-    private BigDecimal dailySalary;
-
-    @Column(name = "comments")
-    private String comments;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private AttendanceStatus status;
-
+    
+    @Column(name = "review_comments")
+    private String reviewComments;
+    
     @CreatedDate
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
+    
     @LastModifiedDate
-    @Column(nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 }

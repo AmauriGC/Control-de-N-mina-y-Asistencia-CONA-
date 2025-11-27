@@ -1,40 +1,71 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/auth/context/AuthContext'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-
-const mockAttendance = [
-  { id: '1', date: '2024-01-18', entry: '08:58', exit: '17:32', hours: 8.5, status: 'on-time' },
-  { id: '2', date: '2024-01-17', entry: '08:50', exit: '17:25', hours: 8.5, status: 'on-time' },
-  { id: '3', date: '2024-01-16', entry: '09:10', exit: '17:35', hours: 8.4, status: 'late' },
-  { id: '4', date: '2024-01-15', entry: '08:55', exit: '17:30', hours: 8.5, status: 'on-time' },
-  { id: '5', date: '2024-01-12', entry: '-', exit: '-', hours: 0, status: 'absent' },
-  { id: '6', date: '2024-01-11', entry: '09:05', exit: '17:28', hours: 8.4, status: 'late' },
-  { id: '7', date: '2024-01-10', entry: '08:52', exit: '17:35', hours: 8.7, status: 'on-time' },
-]
+import { attendanceService } from '../service/attendanceService'
+import { alertConfig } from '@/lib/alert-config'
 
 export default function AttendancePage() {
   const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState('')
+  const [attendance, setAttendance] = useState([])
+  const [stats, setStats] = useState({ totalDays: 0, presentDays: 0, lateDays: 0, absentDays: 0 })
+  const [loading, setLoading] = useState(true)
 
   const statusLabels = {
-    'on-time': 'A tiempo',
-    'late': 'Retardo',
-    'absent': 'Falta',
-    'justified': 'Justificado',
+    'PRESENT': 'A tiempo',
+    'LATE': 'Retardo', 
+    'ABSENT': 'Falta',
+    'JUSTIFIED_ABSENCE': 'Justificado',
+    'VACATION': 'Vacaciones'
   }
 
   const statusVariants = {
-    'on-time': 'secondary',
-    'late': 'destructive',
-    'absent': 'destructive',
-    'justified': 'default',
+    'PRESENT': 'default',
+    'LATE': 'destructive',
+    'ABSENT': 'destructive', 
+    'JUSTIFIED_ABSENCE': 'secondary',
+    'VACATION': 'outline'
   }
 
-  const filtered = mockAttendance.filter((r) =>
+  useEffect(() => {
+    loadAttendanceData()
+  }, [user])
+
+  const loadAttendanceData = async () => {
+    if (!user?.employeeId) return
+
+    setLoading(true)
+    try {
+      // Obtener los últimos 30 días
+      const endDate = new Date().toISOString().split('T')[0]
+      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+
+      const [attendanceResult, statsResult] = await Promise.all([
+        attendanceService.getEmployeeAttendanceRange(user.employeeId, startDate, endDate),
+        attendanceService.getEmployeeStats(user.employeeId, startDate, endDate)
+      ])
+
+      if (attendanceResult.success) {
+        setAttendance(attendanceResult.data)
+      } else {
+        alertConfig.error(attendanceResult.message)
+      }
+
+      if (statsResult.success) {
+        setStats(statsResult.data)
+      }
+    } catch (error) {
+      alertConfig.error('Error al cargar los datos de asistencia')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filtered = attendance.filter((r) =>
     r.date.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
@@ -51,7 +82,7 @@ export default function AttendancePage() {
             <CardTitle className="text-sm font-medium">Total Días</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">18</div>
+            <div className="text-2xl font-bold">{loading ? '-' : stats.totalDays}</div>
           </CardContent>
         </Card>
         <Card>
@@ -59,7 +90,7 @@ export default function AttendancePage() {
             <CardTitle className="text-sm font-medium">A Tiempo</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-primary">15</div>
+            <div className="text-2xl font-bold text-primary">{loading ? '-' : stats.presentDays}</div>
           </CardContent>
         </Card>
         <Card>
@@ -67,7 +98,7 @@ export default function AttendancePage() {
             <CardTitle className="text-sm font-medium">Retardos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">2</div>
+            <div className="text-2xl font-bold text-destructive">{loading ? '-' : stats.lateDays}</div>
           </CardContent>
         </Card>
         <Card>
@@ -75,7 +106,7 @@ export default function AttendancePage() {
             <CardTitle className="text-sm font-medium">Faltas</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-destructive">1</div>
+            <div className="text-2xl font-bold text-destructive">{loading ? '-' : stats.absentDays}</div>
           </CardContent>
         </Card>
       </div>
@@ -106,29 +137,57 @@ export default function AttendancePage() {
                 <TableHead>Entrada</TableHead>
                 <TableHead>Salida</TableHead>
                 <TableHead>Horas</TableHead>
+                <TableHead>Salario</TableHead>
                 <TableHead>Estado</TableHead>
                 <TableHead>Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((record) => (
-                <TableRow key={record.id}>
-                  <TableCell className="font-medium">{record.date}</TableCell>
-                  <TableCell>{record.entry}</TableCell>
-                  <TableCell>{record.exit}</TableCell>
-                  <TableCell>{record.hours}h</TableCell>
-                  <TableCell>
-                    <Badge variant={statusVariants[record.status]}>
-                      {statusLabels[record.status]}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {record.status === 'absent' && (
-                      <Button size="sm" variant="outline">Justificar</Button>
-                    )}
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    Cargando registros de asistencia...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : filtered.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                    {searchTerm ? 'No se encontraron registros' : 'No hay registros de asistencia aún'}
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filtered.map((record) => (
+                  <TableRow key={record.id}>
+                    <TableCell className="font-medium">
+                      {new Date(record.date).toLocaleDateString('es-ES')}
+                    </TableCell>
+                    <TableCell>{record.checkInTime || '-'}</TableCell>
+                    <TableCell>{record.checkOutTime || '-'}</TableCell>
+                    <TableCell>
+                      {record.hoursWorked 
+                        ? `${Math.floor(record.hoursWorked)}h ${Math.round((record.hoursWorked % 1) * 60)}m`
+                        : '-'
+                      }
+                    </TableCell>
+                    <TableCell>
+                      {record.dailySalary 
+                        ? `$${record.dailySalary.toLocaleString()}`
+                        : '-'
+                      }
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={statusVariants[record.status]}>
+                        {statusLabels[record.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {record.status === 'ABSENT' && (
+                        <Button size="sm" variant="outline">Justificar</Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
           </div>
