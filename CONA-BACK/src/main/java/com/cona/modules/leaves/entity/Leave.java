@@ -1,7 +1,6 @@
 package com.cona.modules.leaves.entity;
 
 import com.cona.modules.employees.entity.Employee;
-import com.cona.modules.leaves.enums.LeaveStatus;
 import com.cona.modules.leaves.enums.LeaveType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -15,15 +14,19 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "leave_requests")
+@Table(name = "leaves")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
-public class LeaveRequest {
+public class Leave {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "leave_request_id", nullable = false)
+    private LeaveRequest leaveRequest;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
@@ -39,12 +42,14 @@ public class LeaveRequest {
     @Column(name = "leave_type", nullable = false)
     private LeaveType type;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private LeaveStatus status = LeaveStatus.PENDING;
+    @Column(name = "approved_by", nullable = false)
+    private Long approvedBy; // User ID who approved/rejected
 
-    @Column(name = "reason", length = 500)
-    private String reason;
+    @Column(name = "admin_comments", length = 500)
+    private String adminComments;
+
+    @Column(name = "approved_at", nullable = false)
+    private LocalDateTime approvedAt;
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
