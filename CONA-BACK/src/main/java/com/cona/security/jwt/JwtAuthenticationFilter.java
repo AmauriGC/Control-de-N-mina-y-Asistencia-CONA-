@@ -1,6 +1,7 @@
 package com.cona.security.jwt;
 
 import com.cona.modules.auth.service.CustomUserDetailsService;
+import com.cona.modules.auth.service.Singleton;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -32,6 +33,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = header.substring(7);
             if (jwt.validate(token)) {
                 String username = jwt.getUsername(token);
+                // Verificar si la sesión está activa
+                if (!Singleton.getInstancia_unica().yaSeUso(username)) {
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    return;
+                }
                 UserDetails user = users.loadUserByUsername(username);
                 var auth = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
                 SecurityContextHolder.getContext().setAuthentication(auth);
@@ -40,4 +46,3 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 }
-
