@@ -9,6 +9,9 @@ import com.cona.modules.auth.enums.Role;
 import com.cona.modules.auth.repository.UserRepository;
 import com.cona.modules.notification.service.EmailService;
 import com.cona.security.jwt.JwtTokenProvider;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.FirebaseToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -32,34 +35,28 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public AuthResponse login(AuthRequest request) {
-        // Sanitizar inputs
+
         String email = Sanitizer.normalizeEmail(request.email());
         String password = Sanitizer.sanitizeString(request.password());
 
-        // Validaciones
         if (!Validations.isValidEmail(email)) {
             throw new BusinessException("INVALID_EMAIL", "Formato de correo electrónico inválido");
         }
 
-        // Buscar usuario
         User user = users.findByEmail(email).orElseThrow(() -> new BusinessException("INVALID_CREDENTIALS", "Credenciales incorrectas"));
 
-        // Verificar estado del usuario
         if (!user.getActive()) {
             throw new BusinessException("USER_INACTIVE", "Usuario inactivo");
         }
 
-        // Verificar contraseña
         if (!encoder.matches(password, user.getPassword())) {
             throw new BusinessException("INVALID_CREDENTIALS", "Credenciales incorrectas");
         }
 
-        // Verificar si ya hay una sesión activa
         if (Singleton.getInstancia_unica().yaSeUso(user.getEmail())) {
-            throw new BusinessException("SESSION_ALREADY_ACTIVE", "Ya hay una sesión activa para este usuario");
+            Singleton.getInstancia_unica().reset(user.getEmail());
         }
 
-        // Generar token
         String token = jwt.generateToken(user.getEmail(), Map.of(
                 "id", user.getId(),
                 "role", user.getRole().name(),
@@ -67,10 +64,43 @@ public class AuthServiceImpl implements AuthService {
         ));
         LocalDateTime expires = LocalDateTime.now().plusSeconds(jwt.getExpirationMs() / 1000);
 
-        // Marcar que se ha usado
         Singleton.getInstancia_unica().marcado(user.getEmail());
 
         return new AuthResponse(token, expires);
+    }
+
+    @Override
+    public AuthResponse loginWithGoogle(GoogleLoginRequest request) {
+        try {
+            FirebaseToken decodedToken = FirebaseAuth.getInstance().verifyIdToken(request.idToken());
+            String email = decodedToken.getEmail();
+            System.out.println("Email from Google: " + email);
+
+            email = Sanitizer.normalizeEmail(email);
+
+            User user = users.findByEmail(email).orElseThrow(() -> new BusinessException("USER_NOT_FOUND", "Usuario no encontrado. Regístrate primero."));
+
+            if (!user.getActive()) {
+                throw new BusinessException("USER_INACTIVE", "Usuario inactivo");
+            }
+
+            if (Singleton.getInstancia_unica().yaSeUso(user.getEmail())) {
+                Singleton.getInstancia_unica().reset(user.getEmail());
+            }
+
+            String token = jwt.generateToken(user.getEmail(), Map.of(
+                    "id", user.getId(),
+                    "role", user.getRole().name(),
+                    "email", user.getEmail()
+            ));
+            LocalDateTime expires = LocalDateTime.now().plusSeconds(jwt.getExpirationMs() / 1000);
+
+            Singleton.getInstancia_unica().marcado(user.getEmail());
+
+            return new AuthResponse(token, expires);
+        } catch (FirebaseAuthException e) {
+            throw new BusinessException("INVALID_TOKEN", "Token de Firebase inválido");
+        }
     }
 
     @Override

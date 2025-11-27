@@ -24,6 +24,12 @@ public class AuthController {
         return ApiResponse.success("Login exitoso", data);
     }
 
+    @PostMapping("/google")
+    public ApiResponse<AuthResponse> loginWithGoogle(@Valid @RequestBody GoogleLoginRequest reqBody, HttpServletRequest request) {
+        AuthResponse data = authService.loginWithGoogle(reqBody);
+        return ApiResponse.success("Login con Google exitoso", data);
+    }
+
     @PostMapping("/register")
     public ApiResponse<String> register(@Valid @RequestBody AuthRequest reqBody, @RequestParam(defaultValue = "EMPLOYEE") String role, HttpServletRequest request) {
         authService.register(reqBody, role);

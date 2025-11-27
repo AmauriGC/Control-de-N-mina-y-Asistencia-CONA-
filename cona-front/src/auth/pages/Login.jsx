@@ -11,19 +11,58 @@ import {alertConfig} from "@/lib/alert-config";
 import {tokenManager} from "@/auth/utils/tokenManager";
 import Logo from "@/components/Logo";
 import {makeRules, rulesLib, useFieldValidation} from "@/components/criteria/use-validation";
+import {auth, provider, signInWithPopup} from "../utils/firebaseConfig.js";
 
 export default function LoginPage() {
+    const [firebaseUser, setFirebaseUser] = useState(null);
+
+    useEffect(() => {
+        const unsubscribe = auth.onAuthStateChanged((user) => {
+            setFirebaseUser(user);
+        });
+        return unsubscribe;
+    }, []);
+
+    const {loginWithGoogle} = useAuth();
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (firebaseUser) {
+            (async () => {
+                try {
+                    const idToken = await firebaseUser.getIdToken();
+                    const backendResult = await loginWithGoogle(idToken);
+                    if (backendResult.success) {
+                        navigate(backendResult.user.role === "admin" ? "/dashboard/admin" : "/dashboard/employee", {replace: true});
+                    } else {
+                        console.error("Error en login backend:", backendResult.message);
+                        alertConfig.toastError({
+                            title: "Error",
+                            text: backendResult.message || "Error al iniciar sesión con Google"
+                        });
+                    }
+                } catch (error) {
+                    console.error("Error obteniendo idToken:", error);
+                }
+            })();
+        }
+    }, [firebaseUser, loginWithGoogle, navigate]);
+
+    const getInitials = () => {
+        if (!firebaseUser || !firebaseUser.displayName) return "";
+        return firebaseUser.displayName.charAt(0).toUpperCase();
+    }
+
     const emailField = useFieldValidation(
         "",
         makeRules(
             rulesLib.required("El correo electrónico es obligatorio"),
-            rulesLib.emailDomain(["utez.edu.mx", "cona.com"], "Solo correos @utez.edu.mx o @cona.com permitidos")
+            rulesLib.emailDomain(["utez.edu.mx", "cona.com", "gmail.com"], "Solo correos @utez.edu.mx, @cona.com o @gmail.com permitidos")
         )
     );
     const passwordField = useFieldValidation("", makeRules(rulesLib.required("La contraseña es obligatoria")));
     const [isLoading, setIsLoading] = useState(false);
     const {login, isAuthenticated, user} = useAuth();
-    const navigate = useNavigate();
 
     useEffect(() => {
         if (isAuthenticated && user) {
@@ -54,6 +93,15 @@ export default function LoginPage() {
             setIsLoading(false);
         }
     };
+
+    const loginWithGoogleHandler = async () => {
+        try {
+            const result = await signInWithPopup(auth, provider);
+            setFirebaseUser(result.user);
+        } catch (error) {
+            console.error("Error al iniciar sesión con Google:", error);
+        }
+    }
 
     if (isAuthenticated) return null;
 
@@ -142,6 +190,15 @@ export default function LoginPage() {
                                 Autocompletar Empleado
                             </Button>
                         </div>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={loginWithGoogleHandler}
+                        >
+                            Iniciar con Google
+                        </Button>
                     </div>
                 </CardContent>
             </Card>

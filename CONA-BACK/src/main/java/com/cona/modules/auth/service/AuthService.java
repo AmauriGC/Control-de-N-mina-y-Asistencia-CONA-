@@ -5,6 +5,8 @@ import com.cona.modules.auth.dto.*;
 public interface AuthService {
     AuthResponse login(AuthRequest request);
 
+    AuthResponse loginWithGoogle(GoogleLoginRequest request);
+
     void register(AuthRequest request, String role);
 
     void changePassword(ChangePasswordRequest request, String email);
