@@ -11,13 +11,14 @@ export const attendanceService = {
         skipAuth: true
       })
       return {
-        success: true,
-        data: response.data
+        success: response.success,
+        data: response.data,
+        message: response.message
       }
     } catch (error) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Error al procesar la asistencia'
+        message: error.message || 'Error al procesar la asistencia'
       }
     }
   },
@@ -27,13 +28,14 @@ export const attendanceService = {
     try {
       const response = await axiosClient.get(`/attendance/employee/${employeeId}`)
       return {
-        success: true,
-        data: response.data
+        success: response.success,
+        data: response.data,
+        message: response.message
       }
     } catch (error) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Error al obtener la asistencia'
+        message: error.message || 'Error al obtener la asistencia'
       }
     }
   },
@@ -45,13 +47,14 @@ export const attendanceService = {
         params: { startDate, endDate }
       })
       return {
-        success: true,
-        data: response.data
+        success: response.success,
+        data: response.data,
+        message: response.message
       }
     } catch (error) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Error al obtener la asistencia'
+        message: error.message || 'Error al obtener la asistencia'
       }
     }
   },
@@ -63,13 +66,14 @@ export const attendanceService = {
         params: { startDate, endDate }
       })
       return {
-        success: true,
-        data: response.data
+        success: response.success,
+        data: response.data,
+        message: response.message
       }
     } catch (error) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Error al obtener las estadísticas'
+        message: error.message || 'Error al obtener las estadísticas'
       }
     }
   },
@@ -79,13 +83,51 @@ export const attendanceService = {
     try {
       const response = await axiosClient.get('/attendance/today')
       return {
-        success: true,
-        data: response.data
+        success: response.success,
+        data: response.data,
+        message: response.message
       }
     } catch (error) {
       return {
         success: false,
-        message: error.response?.data?.message || 'Error al obtener la asistencia del día'
+        message: error.message || 'Error al obtener la asistencia del día'
+      }
+    }
+  }
+  ,
+
+  // Obtener asistencia reciente por empleado
+  async getRecentEmployeeAttendance(employeeId, limit = 4) {
+    try {
+      const response = await axiosClient.get(`/attendance/employee/${employeeId}/recent`, {
+        params: { limit }
+      })
+      return {
+        success: response.success,
+        data: response.data,
+        message: response.message
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Error al obtener la asistencia reciente'
+      }
+    }
+  },
+
+  // Obtener conteos del día (presentes y total activos)
+  async getTodayCounts() {
+    try {
+      const response = await axiosClient.get('/attendance/today/counts')
+      return {
+        success: response.success,
+        data: response.data,
+        message: response.message
+      }
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || 'Error al obtener los conteos de asistencia'
       }
     }
   }

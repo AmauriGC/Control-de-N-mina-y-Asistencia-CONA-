@@ -11,6 +11,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -29,14 +30,19 @@ public class SecurityConfig {
             "/leave-requests",
             "/leave-requests/*/review/user/*",
             "/leave-requests/stats/pending",
-            "/attendance/today"
+            "/attendance/today",
+            "/attendance/today/counts",
+            "/justifications/*/approve",
+            "/justifications/*/reject"
     };
 
     private static final String[] EMPLOYEE_ENDPOINTS = {
             "/leave-requests/user/*/requests",
             "/attendance/employee/*",
             "/attendance/employee/*/range",
-            "/attendance/employee/*/stats"
+            "/attendance/employee/*/stats",
+            "/attendance/employee/*/recent",
+            "/justifications/employee/*"
     };
 
     private static final String[] COMMON_ENDPOINTS = {
@@ -66,6 +72,15 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
+
+                        // Justifications: method-specific rules
+                        .requestMatchers(HttpMethod.GET, "/justifications").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/justifications").hasRole("EMPLOYEE")
+                        .requestMatchers("/justifications/employee/*").hasRole("EMPLOYEE")
+                        .requestMatchers("/justifications/*/approve", "/justifications/*/reject").hasRole("ADMIN")
+                        // Attendance additions
+                        .requestMatchers("/attendance/employee/*/recent").hasRole("EMPLOYEE")
+                        .requestMatchers("/attendance/today/counts").hasRole("ADMIN")
 
                         // Solo EMPLOYEE (more specific patterns first)
                         .requestMatchers(EMPLOYEE_ENDPOINTS).hasRole("EMPLOYEE")

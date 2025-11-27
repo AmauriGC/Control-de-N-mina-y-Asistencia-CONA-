@@ -8,6 +8,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.Duration;
 
 @Entity
 @Table(name = "work_schedules")
@@ -33,6 +34,10 @@ public class WorkSchedule {
 
     @Column(nullable = false)
     private Boolean active = true;
+
+    // Número total de horas por jornada (calculado a partir de startTime y endTime)
+    @Column(nullable = false)
+    private Integer totalHoursPerDay = 0;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

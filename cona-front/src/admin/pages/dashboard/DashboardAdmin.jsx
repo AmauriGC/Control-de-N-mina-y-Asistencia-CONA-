@@ -16,6 +16,8 @@ import {
 } from "recharts";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/auth/context/AuthContext";
+import { useEffect, useState } from "react";
+import { attendanceService } from "@/employee/service/attendanceService";
 
 const attendanceData = [
   { day: "Lun", present: 45, late: 5, absent: 2 },
@@ -45,6 +47,20 @@ const contractAlerts = [
 
 export default function DashboardAdmin() {
   const { user } = useAuth();
+  const [todayCounts, setTodayCounts] = useState({ presentCount: 0, activeEmployeesCount: 0 });
+  const [loadingCounts, setLoadingCounts] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      setLoadingCounts(true);
+      const res = await attendanceService.getTodayCounts();
+      if (res.success) {
+        setTodayCounts(res.data || { presentCount: 0, activeEmployeesCount: 0 });
+      }
+      setLoadingCounts(false);
+    };
+    load();
+  }, []);
   return (
     <div className="p-8 space-y-8 min-h-screen">
       <div>
@@ -70,8 +86,14 @@ export default function DashboardAdmin() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">48/52</div>
-            <p className="text-xs text-muted-foreground mt-1">92.3% de asistencia</p>
+            <div className="text-3xl font-bold">
+              {loadingCounts ? '-' : `${todayCounts.presentCount}/${todayCounts.activeEmployeesCount}`}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {loadingCounts || todayCounts.activeEmployeesCount === 0
+                ? '—'
+                : `${((todayCounts.presentCount / todayCounts.activeEmployeesCount) * 100).toFixed(1)}% de asistencia`}
+            </p>
           </CardContent>
         </Card>
 

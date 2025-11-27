@@ -11,6 +11,7 @@ import java.util.Optional;
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     boolean existsByRfc(String rfc);
     boolean existsByEmployeeKey(String employeeKey);
+    long countByStatus(EmployeeStatus status);
     Page<Employee> findByStatus(EmployeeStatus status, Pageable pageable);
     Page<Employee> findByFullNameContainingIgnoreCase(String name, Pageable pageable);
     Page<Employee> findByStatusAndFullNameContainingIgnoreCase(EmployeeStatus status, String name, Pageable pageable);

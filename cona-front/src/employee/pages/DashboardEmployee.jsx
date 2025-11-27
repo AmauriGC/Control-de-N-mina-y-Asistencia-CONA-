@@ -7,11 +7,15 @@ import { useAuth } from '@/auth/context/AuthContext'
 import { useState, useEffect } from 'react'
 import { employeeService } from '@/admin/pages/employees/service/employeeService'
 import { alertConfig } from '@/lib/alert-config'
+import { attendanceService } from '../service/attendanceService'
+import { formatISODateLocal } from '@/lib/utils'
 
 export default function DashboardEmployee() {
   const { user } = useAuth()
   const [profile, setProfile] = useState(null)
   const [profileLoading, setProfileLoading] = useState(true)
+  const [recentAttendance, setRecentAttendance] = useState([])
+  const [attendanceLoading, setAttendanceLoading] = useState(false)
 
   useEffect(() => {
     if (user?.id) {
@@ -25,6 +29,8 @@ export default function DashboardEmployee() {
       const response = await employeeService.getByUserId(user.id)
       if (response.success) {
         setProfile(response.data)
+        // Cargar asistencia reciente
+        loadRecentAttendance(response.data.id)
       } else {
         if (response.message) {
           alertConfig.toastError({ title: "Error", text: response.message })
@@ -36,13 +42,19 @@ export default function DashboardEmployee() {
       setProfileLoading(false)
     }
   }
-
-  const myAttendance = [
-    { date: '2024-01-15', entry: '08:55', exit: '17:30', status: 'on-time' },
-    { date: '2024-01-16', entry: '09:10', exit: '17:35', status: 'late' },
-    { date: '2024-01-17', entry: '08:50', exit: '17:25', status: 'on-time' },
-    { date: '2024-01-18', entry: '08:58', exit: '17:32', status: 'on-time' },
-  ]
+  const loadRecentAttendance = async (employeeId) => {
+    try {
+      setAttendanceLoading(true)
+      const res = await attendanceService.getRecentEmployeeAttendance(employeeId, 4)
+      if (res.success) {
+        setRecentAttendance(res.data || [])
+      }
+    } catch (e) {
+      // opcional: toast
+    } finally {
+      setAttendanceLoading(false)
+    }
+  }
 
   return (
     <div className="p-8 space-y-8 min-h-screen">
@@ -89,21 +101,27 @@ export default function DashboardEmployee() {
       <Card>
         <CardHeader>
           <CardTitle>Mi Asistencia Reciente</CardTitle>
-          <CardDescription>Últimos 4 días de registro</CardDescription>
+          <CardDescription>Últimos 4 registros</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {myAttendance.map((record, index) => (
-              <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="space-y-1">
-                  <p className="font-medium">{record.date}</p>
-                  <p className="text-sm text-muted-foreground">Entrada: {record.entry} | Salida: {record.exit}</p>
+            {attendanceLoading ? (
+              <div className="text-center py-2 text-muted-foreground">Cargando asistencia...</div>
+            ) : recentAttendance.length === 0 ? (
+              <div className="text-center py-2 text-muted-foreground">Sin registros recientes</div>
+            ) : (
+              recentAttendance.map((record) => (
+                <div key={record.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-1">
+                    <p className="font-medium">{formatISODateLocal(record.date)}</p>
+                    <p className="text-sm text-muted-foreground">Entrada: {record.checkInTime || '-'} | Salida: {record.checkOutTime || '-'}</p>
+                  </div>
+                  <Badge variant={record.status === 'LATE' ? 'destructive' : 'secondary'}>
+                    {record.status === 'LATE' ? 'Retardo' : 'A tiempo'}
+                  </Badge>
                 </div>
-                <Badge variant={record.status === 'late' ? 'destructive' : 'secondary'}>
-                  {record.status === 'late' ? 'Retardo' : 'A tiempo'}
-                </Badge>
-              </div>
-            ))}
+              ))
+            )}
           </div>
           <Link to="/dashboard/attendance">
             <Button variant="outline" className="w-full mt-4">Ver historial completo</Button>

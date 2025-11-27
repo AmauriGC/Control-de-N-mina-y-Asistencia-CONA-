@@ -3,6 +3,7 @@ package com.cona.modules.attendance.service;
 import com.cona.modules.attendance.controller.dto.AttendanceResponseDto;
 import com.cona.modules.attendance.controller.dto.AttendanceStatsDto;
 import com.cona.modules.attendance.controller.dto.CheckInOutRequestDto;
+import com.cona.modules.attendance.controller.dto.TodayAttendanceCountsDto;
 
 
 import java.time.LocalDate;
@@ -19,4 +20,6 @@ public interface AttendanceService {
     AttendanceStatsDto getEmployeeAttendanceStats(Long employeeId, LocalDate startDate, LocalDate endDate);
     
     List<AttendanceResponseDto> getTodayAttendance();
+
+    TodayAttendanceCountsDto getTodayCounts();
 }

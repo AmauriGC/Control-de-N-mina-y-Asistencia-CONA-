@@ -25,6 +25,7 @@ public class WorkScheduleService {
         dto.setExitTime(entity.getEndTime());
         dto.setToleranceMinutes(entity.getToleranceMinutes());
         dto.setDescription(entity.getDescription());
+        dto.setTotalHoursPerDay(entity.getTotalHoursPerDay());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;
@@ -40,6 +41,10 @@ public class WorkScheduleService {
         entity.setDescription(request.getDescription());
         entity.setActive(true);
 
+        // Calcular horas totales por día (enteras)
+        int totalHours = (int) java.time.Duration.between(entity.getStartTime(), entity.getEndTime()).toHours();
+        entity.setTotalHoursPerDay(Math.max(totalHours, 0));
+
         WorkSchedule saved = workScheduleRepository.save(entity);
         return toDto(saved);
     }
@@ -54,6 +59,10 @@ public class WorkScheduleService {
         entity.setEndTime(request.getExitTime());
         entity.setToleranceMinutes(request.getToleranceMinutes());
         entity.setDescription(request.getDescription());
+
+        // Recalcular horas totales por día
+        int totalHours = (int) java.time.Duration.between(entity.getStartTime(), entity.getEndTime()).toHours();
+        entity.setTotalHoursPerDay(Math.max(totalHours, 0));
 
         WorkSchedule saved = workScheduleRepository.save(entity);
         return toDto(saved);

@@ -150,10 +150,10 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
         long days = ChronoUnit.DAYS.between(request.getStartDate(), request.getEndDate()) + 1;
         dto.setTotalDays((int) days);
         
-        // Calculate vacation pay if it's a vacation request
+        // Calcular pago vacacional según fórmula: (horas/día * salario/hora) * 3 * días
         if (request.getType() == LeaveType.VACATION) {
-            BigDecimal weeklySalary = calculateWeeklySalary(request.getEmployee());
-            dto.setVacationPay(weeklySalary.multiply(VACATION_MULTIPLIER));
+            BigDecimal vacationPay = calculateVacationPay(request.getEmployee(), dto.getTotalDays());
+            dto.setVacationPay(vacationPay);
         }
         
         // Get review comments if exists
@@ -163,8 +163,20 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
         return dto;
     }
     
-    private BigDecimal calculateWeeklySalary(Employee employee) {
-        // Assuming 40 hours per week, this calculation can be adjusted based on actual work schedule
-        return employee.getHourlyRate().multiply(BigDecimal.valueOf(Duration.between(employee.getWorkSchedule().getStartTime(), employee.getWorkSchedule().getEndTime()).toHours()));
+    private BigDecimal calculateVacationPay(Employee employee, int totalDays) {
+        if (employee.getHourlyRate() == null || employee.getWorkSchedule() == null) {
+            return BigDecimal.ZERO;
+        }
+
+        Integer hoursPerDay = employee.getWorkSchedule().getTotalHoursPerDay();
+        if (hoursPerDay == null || hoursPerDay <= 0) {
+            // Fallback si aún no está calculado: calcular con start/end
+            hoursPerDay = (int) Duration.between(employee.getWorkSchedule().getStartTime(), employee.getWorkSchedule().getEndTime()).toHours();
+            if (hoursPerDay < 0) hoursPerDay = 0;
+        }
+
+        BigDecimal dailySalary = employee.getHourlyRate().multiply(BigDecimal.valueOf(hoursPerDay));
+        BigDecimal vacationDailySalary = dailySalary.multiply(VACATION_MULTIPLIER);
+        return vacationDailySalary.multiply(BigDecimal.valueOf(totalDays));
     }
 }

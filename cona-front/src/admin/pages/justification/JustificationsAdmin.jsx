@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,36 +10,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Clock, CheckCircle, XCircle, FileText, Eye } from "lucide-react";
 import { alertConfig } from "@/lib/alert-config";
+import { justificationService } from './service/justificationService'
 import { useFieldValidation } from "@/components/criteria/use-validation";
 import { justificationReviewRules } from "@/components/criteria/criteria";
 
-const mockJustifications = [
-  {
-    id: "1",
-    employeeId: "E002",
-    employeeName: "María Empleada",
-    date: "2024-01-16",
-    documentType: "Certificado Médico",
-    comments: "Cita médica programada",
-    status: "pending",
-    submittedAt: "2024-01-17 10:30",
-  },
-  {
-    id: "2",
-    employeeId: "E003",
-    employeeName: "Juan Pérez",
-    date: "2024-01-16",
-    documentType: "Permiso Personal",
-    comments: "Asunto familiar urgente",
-    status: "pending",
-    submittedAt: "2024-01-17 09:15",
-  },
-];
-
 export default function JustificationsAdmin() {
-  const [justifications, setJustifications] = useState(mockJustifications);
+  const [justifications, setJustifications] = useState([]);
   const [selected, setSelected] = useState(null);
   const [open, setOpen] = useState(false);
+
+  const loadJustifications = async () => {
+    const res = await justificationService.listAll()
+    if (res.success) setJustifications(res.data || [])
+    else if (res.message) await alertConfig.toastError({ title: 'Error', text: res.message })
+  }
+
+  useEffect(() => { loadJustifications() }, [])
 
   const pendingCount = justifications.filter((j) => j.status === "pending").length;
 
@@ -54,10 +40,13 @@ export default function JustificationsAdmin() {
       text: "Esta acción marcará la falta como justificada.",
     });
     if (!ok) return;
-    setJustifications((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, status: "approved", reviewComments: comments } : j))
-    );
-    await alertConfig.toastSuccess({ title: "Justificación aprobada", text: "Marcada como justificada" });
+    const res = await justificationService.approve(id, 1, comments)
+    if (res.success) {
+      await alertConfig.toastSuccess({ title: "Justificación aprobada", text: res.message || "Marcada como justificada" });
+      await loadJustifications()
+    } else {
+      await alertConfig.toastError({ title: 'Error', text: res.message || 'No se pudo aprobar' })
+    }
     setOpen(false);
   };
 
@@ -67,10 +56,13 @@ export default function JustificationsAdmin() {
       text: "La falta se mantendrá sin justificar.",
     });
     if (!ok) return;
-    setJustifications((prev) =>
-      prev.map((j) => (j.id === id ? { ...j, status: "rejected", reviewComments: comments } : j))
-    );
-    await alertConfig.toastInfo({ title: "Justificación rechazada", text: "La falta permanece sin justificar" });
+    const res = await justificationService.reject(id, 1, comments)
+    if (res.success) {
+      await alertConfig.toastInfo({ title: "Justificación rechazada", text: res.message || "La falta permanece sin justificar" });
+      await loadJustifications()
+    } else {
+      await alertConfig.toastError({ title: 'Error', text: res.message || 'No se pudo rechazar' })
+    }
     setOpen(false);
   };
 
@@ -115,13 +107,12 @@ export default function JustificationsAdmin() {
                   <TableRow key={just.id}>
                     <TableCell>
                       <div>
-                        <p className="font-medium">{just.employeeName}</p>
-                        <p className="text-xs text-muted-foreground">{just.employeeId}</p>
+                        <p className="font-medium">{just.employeeId}</p>
                       </div>
                     </TableCell>
                     <TableCell className="font-medium">{just.date}</TableCell>
                     <TableCell>{just.documentType}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{just.submittedAt}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{/* submittedAt not provided */}</TableCell>
                     <TableCell>
                       <Badge
                         variant={

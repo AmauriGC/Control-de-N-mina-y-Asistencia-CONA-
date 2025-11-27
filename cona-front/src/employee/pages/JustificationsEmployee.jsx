@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,30 +14,53 @@ import { Upload, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react
 import { alertConfig } from "@/lib/alert-config";
 import { useFieldValidation } from "@/components/criteria/use-validation";
 import { rulesLib } from "@/components/criteria/criteria";
-
-const mockAbsences = [
-  { id: "1", date: "2024-01-15", status: "absent", daysLeft: 1 },
-  { id: "2", date: "2024-01-12", status: "absent", daysLeft: 0 },
-];
-
-const mockJustifications = [
-  {
-    id: "1",
-    employeeId: "E002",
-    employeeName: "María Empleada",
-    date: "2024-01-16",
-    documentType: "Certificado Médico",
-    comments: "Cita médica programada",
-    status: "pending",
-    submittedAt: "2024-01-17 10:30",
-  },
-];
+import { useAuth } from '@/auth/context/AuthContext'
+import { attendanceService } from '@/employee/service/attendanceService'
+import { justificationService } from '@/admin/pages/justification/service/justificationService'
+import { employeeService } from '@/admin/pages/employees/service/employeeService'
 
 export default function JustificationsEmployee() {
+  const { user } = useAuth()
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAbsence, setSelectedAbsence] = useState(null);
+  const [absences, setAbsences] = useState([])
+  const [myJustifications, setMyJustifications] = useState([])
 
-  const myJustifications = mockJustifications;
+  const loadData = async () => {
+    // Resolver employeeId (fallback si no viene en el token)
+    let empId = user?.employeeId
+    if (!empId && user?.id) {
+      try {
+        const res = await employeeService.getByUserId(user.id)
+        if (res?.success && res.data?.id) empId = res.data.id
+      } catch {}
+    }
+    if (!empId) return
+
+    // rango: últimos 3 días para ventana de 2 días
+    const endDate = new Date().toISOString().split('T')[0]
+    const startDate = new Date(Date.now() - 3*24*60*60*1000).toISOString().split('T')[0]
+    const [attRange, myJusts] = await Promise.all([
+      attendanceService.getEmployeeAttendanceRange(empId, startDate, endDate),
+      justificationService.listByEmployee(empId)
+    ])
+    if (attRange.success) {
+      const today = new Date()
+      const pending = (attRange.data || [])
+        .filter(r => r.status === 'ABSENT')
+        .map(r => {
+          const recDate = parseLocalDate(r.date)
+          const diffDays = Math.floor((today - recDate) / (1000*60*60*24))
+          return { id: r.id, date: r.date, diffDays }
+        })
+        .filter(x => x.diffDays >= 0 && x.diffDays <= 2)
+        .map(x => ({ id: x.id, date: x.date, daysLeft: 2 - x.diffDays }))
+      setAbsences(pending)
+    }
+    if (myJusts.success) setMyJustifications(myJusts.data || [])
+  }
+
+  useEffect(() => { loadData() }, [user])
 
   const handleJustify = (absence) => {
     setSelectedAbsence(absence);
@@ -51,19 +74,19 @@ export default function JustificationsEmployee() {
         <p className="text-muted-foreground">Justifica tus ausencias subiendo documentos</p>
       </div>
 
-      {mockAbsences.length > 0 && (
+      {absences.length > 0 && (
         <Card className="border-destructive bg-destructive/10">
           <CardHeader>
             <div className="flex items-center gap-3">
               <AlertTriangle className="h-5 w-5 text-destructive" />
               <div>
                 <CardTitle className="text-destructive">Faltas Pendientes de Justificar</CardTitle>
-                <CardDescription>Tienes {mockAbsences.length} falta(s) que requieren justificación</CardDescription>
+                <CardDescription>Tienes {absences.length} falta(s) que requieren justificación</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
-            {mockAbsences.map((absence) => (
+            {absences.map((absence) => (
               <div key={absence.id} className="flex items-center justify-between p-4 bg-background border rounded-lg">
                 <div className="space-y-1">
                   <p className="font-medium">Falta del {absence.date}</p>
@@ -105,11 +128,17 @@ export default function JustificationsEmployee() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {myJustifications.map((just) => (
+                {myJustifications.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      no se encontraron registros
+                    </TableCell>
+                  </TableRow>
+                ) : myJustifications.map((just) => (
                   <TableRow key={just.id}>
                     <TableCell className="font-medium">{just.date}</TableCell>
                     <TableCell>{just.documentType}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{just.submittedAt}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{just.createdAt ? new Date(just.createdAt).toLocaleString('es-MX') : '-'}</TableCell>
                     <TableCell>
                       <Badge
                         variant={
@@ -156,6 +185,7 @@ export default function JustificationsEmployee() {
 
 function JustificationForm({ absence, onClose }) {
   const [formData, setFormData] = useState({ documentType: "", comments: "", file: null });
+  const { user } = useAuth()
 
   const commentField = useFieldValidation(formData.comments, [
     rulesLib.optional(rulesLib.minLength(5, "Mínimo 5 caracteres")),
@@ -193,11 +223,24 @@ function JustificationForm({ absence, onClose }) {
       await alertConfig.toastError({ title: "Comentarios inválidos", text: commentField.error });
       return;
     }
-    await alertConfig.toastSuccess({
-      title: "Justificación enviada",
-      text: "Tu justificación ha sido enviada para revisión",
-    });
-    onClose();
+    const payload = {
+      employeeId: user?.employeeId,
+      attendanceId: absence?.id,
+      documentType: mapDocType(formData.documentType),
+      reason: formData.comments || ''
+    }
+    const res = await justificationService.submit(payload, formData.file)
+    if (res.success) {
+      await alertConfig.toastSuccess({ title: "Justificación enviada", text: res.message || "Tu justificación ha sido enviada para revisión" })
+      onClose()
+      // refrescar listas
+      await (typeof window !== 'undefined' ? Promise.resolve() : Promise.resolve())
+      // reload absences and my justifications
+      // reuse outer loadData through a custom event
+      try { await loadData() } catch {}
+    } else {
+      await alertConfig.toastError({ title: 'Error', text: res.message || 'No se pudo enviar la justificación' })
+    }
   };
 
   return (
@@ -212,11 +255,9 @@ function JustificationForm({ absence, onClose }) {
             <SelectValue placeholder="Selecciona un tipo" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="medical">Certificado Médico</SelectItem>
-            <SelectItem value="personal">Permiso Personal</SelectItem>
-            <SelectItem value="emergency">Emergencia Familiar</SelectItem>
-            <SelectItem value="official">Trámite Oficial</SelectItem>
-            <SelectItem value="other">Otro</SelectItem>
+            <SelectItem value="MEDICAL_CERTIFICATE">Certificado Médico</SelectItem>
+            <SelectItem value="INVOICE">Comprobante/Factura</SelectItem>
+            <SelectItem value="OTHER">Otro</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -273,4 +314,19 @@ function JustificationForm({ absence, onClose }) {
       </div>
     </form>
   );
+}
+
+function mapDocType(v) {
+  if (!v) return 'OTHER'
+  return v
+}
+
+function parseLocalDate(isoDate) {
+  // Expect YYYY-MM-DD; construct local date to avoid timezone shifts
+  try {
+    const [y, m, d] = String(isoDate).split('-').map(Number)
+    return new Date(y, (m || 1) - 1, d || 1)
+  } catch {
+    return new Date(isoDate)
+  }
 }

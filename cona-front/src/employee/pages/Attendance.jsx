@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { attendanceService } from '../service/attendanceService'
+import { employeeService } from '@/admin/pages/employees/service/employeeService'
 import { alertConfig } from '@/lib/alert-config'
+import { formatISODateLocal } from '@/lib/utils'
 
 export default function AttendancePage() {
   const { user } = useAuth()
@@ -14,6 +16,7 @@ export default function AttendancePage() {
   const [attendance, setAttendance] = useState([])
   const [stats, setStats] = useState({ totalDays: 0, presentDays: 0, lateDays: 0, absentDays: 0 })
   const [loading, setLoading] = useState(true)
+  const [effectiveEmployeeId, setEffectiveEmployeeId] = useState(null)
 
   const statusLabels = {
     'PRESENT': 'A tiempo',
@@ -32,11 +35,32 @@ export default function AttendancePage() {
   }
 
   useEffect(() => {
-    loadAttendanceData()
+    const init = async () => {
+      if (!user) return
+      // Si ya viene employeeId desde el token/usuario, úsalo
+      if (user.employeeId) {
+        setEffectiveEmployeeId(user.employeeId)
+        await loadAttendanceData(user.employeeId)
+        return
+      }
+      // De lo contrario, obtén el empleado por userId
+      try {
+        const res = await employeeService.getByUserId(user.id)
+        if (res?.success && res.data?.id) {
+          setEffectiveEmployeeId(res.data.id)
+          await loadAttendanceData(res.data.id)
+        }
+      } catch (e) {
+        // opcional: alerta silenciosa
+      }
+    }
+    init()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  const loadAttendanceData = async () => {
-    if (!user?.employeeId) return
+  const loadAttendanceData = async (empIdParam) => {
+    const empId = empIdParam ?? effectiveEmployeeId ?? user?.employeeId
+    if (!empId) return
 
     setLoading(true)
     try {
@@ -45,8 +69,8 @@ export default function AttendancePage() {
       const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
       const [attendanceResult, statsResult] = await Promise.all([
-        attendanceService.getEmployeeAttendanceRange(user.employeeId, startDate, endDate),
-        attendanceService.getEmployeeStats(user.employeeId, startDate, endDate)
+        attendanceService.getEmployeeAttendanceRange(empId, startDate, endDate),
+        attendanceService.getEmployeeStats(empId, startDate, endDate)
       ])
 
       if (attendanceResult.success) {
@@ -65,9 +89,10 @@ export default function AttendancePage() {
     }
   }
 
-  const filtered = attendance.filter((r) =>
-    r.date.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  const filtered = attendance.filter((r) => {
+    const dateStr = typeof r.date === 'string' ? r.date : String(r.date ?? '')
+    return dateStr.toLowerCase().includes(searchTerm.toLowerCase())
+  })
 
   return (
     <div className="p-8 space-y-6 min-h-screen">
@@ -159,7 +184,7 @@ export default function AttendancePage() {
                 filtered.map((record) => (
                   <TableRow key={record.id}>
                     <TableCell className="font-medium">
-                      {new Date(record.date).toLocaleDateString('es-ES')}
+                      {record?.date ? formatISODateLocal(record.date) : '-'}
                     </TableCell>
                     <TableCell>{record.checkInTime || '-'}</TableCell>
                     <TableCell>{record.checkOutTime || '-'}</TableCell>
@@ -170,10 +195,14 @@ export default function AttendancePage() {
                       }
                     </TableCell>
                     <TableCell>
-                      {record.dailySalary 
-                        ? `$${record.dailySalary.toLocaleString()}`
-                        : '-'
-                      }
+                      {record.dailySalary !== null && record.dailySalary !== undefined
+                        ? (() => {
+                            const val = typeof record.dailySalary === 'number' 
+                              ? record.dailySalary 
+                              : parseFloat(record.dailySalary)
+                            return isNaN(val) ? '-' : `$${val.toLocaleString()}`
+                          })()
+                        : '-'}
                     </TableCell>
                     <TableCell>
                       <Badge variant={statusVariants[record.status]}>
@@ -181,9 +210,18 @@ export default function AttendancePage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {record.status === 'ABSENT' && (
-                        <Button size="sm" variant="outline">Justificar</Button>
-                      )}
+                      {(() => {
+                        if (record.status !== 'ABSENT' || !record?.date) return null
+                        const today = new Date()
+                        const recDate = new Date(record.date)
+                        const diffDays = Math.floor((today - recDate) / (1000 * 60 * 60 * 24))
+                        const withinWindow = diffDays >= 0 && diffDays <= 2
+                        return withinWindow ? (
+                          <Button size="sm" variant="outline" onClick={() => window.location.assign('/dashboard/justifications/employee')}>
+                            Justificar
+                          </Button>
+                        ) : null
+                      })()}
                     </TableCell>
                   </TableRow>
                 ))

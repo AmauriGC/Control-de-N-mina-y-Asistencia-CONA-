@@ -9,11 +9,14 @@ import com.cona.modules.attendance.enums.AttendanceStatus;
 import com.cona.modules.attendance.repository.AttendanceRepository;
 import com.cona.modules.employees.entity.Employee;
 import com.cona.modules.employees.repository.EmployeeRepository;
+import com.cona.modules.employees.enums.EmployeeStatus;
 import com.cona.modules.leaves.entity.Leave;
 import com.cona.modules.leaves.repository.LeaveRepository;
 import com.cona.modules.system_config.entity.Holiday;
 import com.cona.modules.system_config.entity.WorkSchedule;
 import com.cona.modules.system_config.repository.HolidayRepository;
+import com.cona.modules.attendance.controller.dto.TodayAttendanceCountsDto;
+import com.cona.modules.leaves.enums.LeaveType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -49,10 +52,19 @@ public class AttendanceServiceImpl implements AttendanceService {
         Optional<Attendance> existingAttendance = attendanceRepository.findByEmployeeAndDate(employee, today);
 
         if (existingAttendance.isPresent()) {
-            // Check Out
-            return processCheckOut(existingAttendance.get(), now);
+            Attendance todayAttendance = existingAttendance.get();
+            // Si ya tiene check-in y check-out no permitir nueva actualización
+            if (todayAttendance.getCheckInTime() != null && todayAttendance.getCheckOutTime() != null) {
+                log.info("Intento adicional de registro: empleado {} ya completó entrada y salida hoy", employee.getEmployeeKey());
+                throw new BusinessException(
+                        "ATTENDANCE_ALREADY_COMPLETED",
+                        "Ya ha completado su registro del día"
+                );
+            }
+            // Registrar salida si aún falta
+            return processCheckOut(todayAttendance, now);
         } else {
-            // Check In
+            // Registrar entrada inicial
             return processCheckIn(employee, today, now);
         }
     }
@@ -105,8 +117,13 @@ public class AttendanceServiceImpl implements AttendanceService {
                                  workSchedule.getToleranceMinutes() : 0;
         
         LocalTime lateThreshold = scheduledStart.plusMinutes(toleranceMinutes);
-        
+        // Nueva regla:
+        // - Si check-in > (hora entrada + tolerancia) => ABSENT (falta)
+        // - Si check-in > hora entrada y <= (hora entrada + tolerancia) => LATE (retardo)
+        // - Si check-in <= hora de entrada => PRESENT
         if (checkInTime.isAfter(lateThreshold)) {
+            return AttendanceStatus.ABSENT;
+        } else if (checkInTime.isAfter(scheduledStart)) {
             return AttendanceStatus.LATE;
         } else {
             return AttendanceStatus.PRESENT;
@@ -133,7 +150,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         }
 
         // Verificar si está en vacaciones (pago x3)
-        Optional<Leaeve> vacationLeave = leaveRepository.findByEmployeeAndDateBetweenStartAndEndDate(
+        Optional<Leave> vacationLeave = leaveRepository.findByEmployeeAndDateBetweenStartAndEndDate(
                 employee, date);
         if (vacationLeave.isPresent()) {
             return baseSalary.multiply(BigDecimal.valueOf(3));
@@ -154,12 +171,14 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .toList();
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<AttendanceResponseDto> getEmployeeAttendanceByDateRange(Long employeeId, LocalDate startDate, LocalDate endDate) {
+        @Override
+        @Transactional
+        public List<AttendanceResponseDto> getEmployeeAttendanceByDateRange(Long employeeId, LocalDate startDate, LocalDate endDate) {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new BusinessException("EMPLOYEE_NOT_FOUND", "Empleado no encontrado con ID: " + employeeId));
-        
+        // On-demand: asegurar registros por día en el rango
+        ensureAttendanceRange(employee, startDate, endDate);
+
         List<Attendance> attendances = attendanceRepository.findByEmployeeAndDateBetweenOrderByDateDesc(
                 employee, startDate, endDate);
         return attendances.stream()
@@ -189,6 +208,60 @@ public class AttendanceServiceImpl implements AttendanceService {
         return attendances.stream()
                 .map(this::mapToResponseDto)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TodayAttendanceCountsDto getTodayCounts() {
+        long presentCount = getTodayAttendance().size();
+        long activeEmployees = employeeRepository.countByStatus(EmployeeStatus.ACTIVE);
+        return new TodayAttendanceCountsDto(presentCount, activeEmployees);
+    }
+
+    private void ensureAttendanceRange(Employee employee, LocalDate startDate, LocalDate endDate) {
+        LocalDate date = startDate;
+        while (!date.isAfter(endDate)) {
+            ensureAttendanceForDate(employee, date);
+            date = date.plusDays(1);
+        }
+    }
+
+    private Attendance ensureAttendanceForDate(Employee employee, LocalDate date) {
+        Optional<Attendance> existing = attendanceRepository.findByEmployeeAndDate(employee, date);
+        if (existing.isPresent()) return existing.get();
+
+        // Si existe un permiso/vacación aprobado para ese día, registrar acorde
+        Optional<Leave> approvedLeave = leaveRepository.findByEmployeeAndDateBetweenStartAndEndDate(employee, date);
+
+        Attendance newAttendance = new Attendance();
+        newAttendance.setEmployee(employee);
+        newAttendance.setDate(date);
+
+        if (approvedLeave.isPresent()) {
+            Leave leave = approvedLeave.get();
+            if (leave.getLeaveRequest().getType() == LeaveType.VACATION) {
+                newAttendance.setStatus(AttendanceStatus.VACATION);
+                // Pago de vacaciones por día: (horas/día * salario/hora) * 3
+                WorkSchedule ws = employee.getWorkSchedule();
+                Integer hoursPerDay = ws != null && ws.getTotalHoursPerDay() != null ? ws.getTotalHoursPerDay() : 0;
+                if (employee.getHourlyRate() != null && hoursPerDay > 0) {
+                    BigDecimal dailySalary = employee.getHourlyRate()
+                            .multiply(BigDecimal.valueOf(hoursPerDay))
+                            .multiply(BigDecimal.valueOf(3));
+                    newAttendance.setDailySalary(dailySalary);
+                }
+            } else {
+                // Permisos (personal, enfermedad): no pagan pero no afectan
+                newAttendance.setStatus(AttendanceStatus.JUSTIFIED_ABSENCE);
+                newAttendance.setDailySalary(BigDecimal.ZERO);
+            }
+            return attendanceRepository.save(newAttendance);
+        }
+
+        // Si no hay permiso/vacaciones aprobadas: marcar como falta
+        newAttendance.setStatus(AttendanceStatus.ABSENT);
+        newAttendance.setDailySalary(BigDecimal.ZERO);
+        return attendanceRepository.save(newAttendance);
     }
 
     private AttendanceResponseDto mapToResponseDto(Attendance attendance) {

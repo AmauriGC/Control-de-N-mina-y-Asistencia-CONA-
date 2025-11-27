@@ -3,6 +3,7 @@ package com.cona.modules.justifications.entity;
 import com.cona.modules.employees.entity.Employee;
 import com.cona.modules.justifications.enums.DocumentType;
 import com.cona.modules.justifications.enums.JustificationStatus;
+import com.cona.modules.attendance.entity.Attendance;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -28,6 +29,10 @@ public class Justification {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "attendance_id")
+    private Attendance attendance;
 
     @Column(nullable = false)
     private LocalDate date;

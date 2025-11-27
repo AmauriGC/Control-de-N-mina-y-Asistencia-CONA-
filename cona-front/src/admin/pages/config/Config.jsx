@@ -232,48 +232,6 @@ export default function ConfigPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <Clock className="h-5 w-5 text-primary" />
-            <div>
-              <CardTitle>Horarios Laborales</CardTitle>
-              <CardDescription>Define los horarios de entrada y salida</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Field label="Hora de Entrada" helper="Horario estándar de inicio">
-              <TimePicker
-                value={config.workScheduleStart}
-                onChange={(v) => handleConfigChange("workScheduleStart", v)}
-              />
-            </Field>
-            <Field label="Hora de Salida" helper="Horario estándar de fin">
-              <TimePicker value={config.workScheduleEnd} onChange={(v) => handleConfigChange("workScheduleEnd", v)} />
-            </Field>
-          </div>
-          <Field label="Tolerancia de Retardo (minutos)" helper="Minutos antes de marcar retardo">
-            <Input
-              type="number"
-              value={lateThresholdField.value}
-              min={0}
-              max={60}
-              onChange={(e) => {
-                lateThresholdField.onChange(e);
-                handleConfigChange("lateThresholdMinutes", parseInt(e.target.value || "0"));
-              }}
-              onBlur={lateThresholdField.onBlur}
-              aria-invalid={lateThresholdField.showError && !!lateThresholdField.error}
-            />
-            {lateThresholdField.showError && lateThresholdField.error && (
-              <p className="text-xs text-destructive">{lateThresholdField.error}</p>
-            )}
-          </Field>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <DollarSign className="h-5 w-5 text-primary" />

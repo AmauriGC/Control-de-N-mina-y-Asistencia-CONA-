@@ -24,10 +24,10 @@ export const employeeService = {
         return response.data;
     },
 
-    // Obtener empleado por ID de usuario
+    // Obtener empleado por ID de usuario (retorna ApiResponse completo)
     getByUserId: async (userId) => {
         const response = await axiosClient.get(API_ENDPOINTS.EMPLOYEES.GET_BY_USER_ID.replace(':userId', userId));
-        return response.data;
+        return response; // { success, data, message }
     },
 
     // Cambiar estado del empleado
