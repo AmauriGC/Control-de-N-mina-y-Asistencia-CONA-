@@ -1,6 +1,7 @@
 package com.cona.modules.leaves.entity;
 
 import com.cona.modules.employees.entity.Employee;
+import com.cona.modules.leaves.enums.LeaveType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,6 +10,7 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -18,7 +20,6 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @EntityListeners(AuditingEntityListener.class)
 public class Leave {
-    
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -30,10 +31,26 @@ public class Leave {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
-    
-    @Column(name = "review_comments")
-    private String reviewComments;
-    
+
+    @Column(name = "start_date", nullable = false)
+    private LocalDate startDate;
+
+    @Column(name = "end_date", nullable = false)
+    private LocalDate endDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "leave_type", nullable = false)
+    private LeaveType type;
+
+    @Column(name = "approved_by", nullable = false)
+    private Long approvedBy; // User ID who approved/rejected
+
+    @Column(name = "admin_comments", length = 500)
+    private String adminComments;
+
+    @Column(name = "approved_at", nullable = false)
+    private LocalDateTime approvedAt;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -13,7 +13,7 @@ export default function ForgotPasswordPage() {
     const emailField = useFieldValidation("", makeRules(
         rulesLib.required("El correo electrónico es obligatorio"),
         rulesLib.email(),
-        rulesLib.emailDomain(["utez.edu.mx", "cona.com"], "Solo correos @utez.edu.mx o @cona.com permitidos")
+        rulesLib.emailDomain(["utez.edu.mx", "cona.com", "gmail.com"], "Solo correos @utez.edu.mx, @cona.com o @gmail.com permitidos")
     ));
     const [isLoading, setIsLoading] = useState(false);
 

@@ -21,7 +21,7 @@ public interface LeaveRepository extends JpaRepository<Leave, Long> {
     @Query("SELECT l FROM Leave l WHERE " +
            "(:employeeName IS NULL OR LOWER(l.employee.fullName) LIKE LOWER(CONCAT('%', :employeeName, '%')))")
     Page<Leave> findByFilters(@Param("employeeName") String employeeName, Pageable pageable);
-    
+
     @Query("SELECT l FROM Leave l WHERE l.employee = :employee AND :date BETWEEN l.leaveRequest.startDate AND l.leaveRequest.endDate AND l.leaveRequest.status = 'APPROVED'")
     Optional<Leave> findByEmployeeAndDateBetweenStartAndEndDate(@Param("employee") com.cona.modules.employees.entity.Employee employee, @Param("date") java.time.LocalDate date);
 }

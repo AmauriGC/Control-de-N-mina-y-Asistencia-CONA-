@@ -29,28 +29,28 @@ public class LeaveRequest {
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
-    @Column(nullable = false)
+    @Column(name = "start_date", nullable = false)
     private LocalDate startDate;
 
-    @Column(nullable = false)
+    @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "leave_type", nullable = false)
     private LeaveType type;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private LeaveStatus status;
+    @Column(name = "status", nullable = false)
+    private LeaveStatus status = LeaveStatus.PENDING;
 
-    @Column(length = 500)
+    @Column(name = "reason", length = 500)
     private String reason;
 
     @CreatedDate
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @LastModifiedDate
-    @Column(nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 }

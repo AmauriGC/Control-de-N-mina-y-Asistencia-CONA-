@@ -47,6 +47,7 @@ public class SecurityConfig {
 
     private static final String[] PUBLIC_ENDPOINTS = {
             "/auth/login",
+            "/auth/google",
             "/auth/register",
             "/auth/forgot-password",
             "/auth/reset-password",
@@ -71,6 +72,9 @@ public class SecurityConfig {
 
                         // Solo ADMIN
                         .requestMatchers(ADMIN_ENDPOINTS).hasRole("ADMIN")
+
+                        // Solo EMPLOYEE
+                        .requestMatchers(EMPLOYEE_ENDPOINTS).hasRole("EMPLOYEE")
 
                         // ADMIN o EMPLOYEE
                         .requestMatchers(COMMON_ENDPOINTS).hasAnyRole("ADMIN", "EMPLOYEE")
