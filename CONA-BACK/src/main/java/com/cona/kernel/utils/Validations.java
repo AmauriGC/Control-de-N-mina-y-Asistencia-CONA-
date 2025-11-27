@@ -1,7 +1,7 @@
 package com.cona.kernel.utils;
 
 public class Validations {
-    public static final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@(cona\\.mx|utez\\.edu\\.mx|cona\\.com)$";
+    public static final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@(cona\\.mx|utez\\.edu\\.mx|cona\\.com|gmail\\.com)$";
     public static final String NAME_REGEX = "^[a-zA-Z\\s]+$";
     public static final String PHONE_REGEX = "^\\+?[0-9]{10,15}$";
     public static final String PASSWORD_REGEX = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&.])[A-Za-z\\d@$!%*?&.]{8,}$";

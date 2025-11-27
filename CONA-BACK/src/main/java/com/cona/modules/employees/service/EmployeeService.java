@@ -57,7 +57,7 @@ public class EmployeeService {
 
         User user = new User();
         user.setEmail(dto.getEmail());
-        String pass = dto.getRfc().substring(dto.getRfc().length() - 3) + key;
+        String pass = dto.getRfc().substring(0, 6) + dto.getPhone().substring(dto.getPhone().length() - 3) + ".";
         user.setPassword(passwordEncoder.encode(pass));
         System.out.println(pass);
         user.setActive(true);

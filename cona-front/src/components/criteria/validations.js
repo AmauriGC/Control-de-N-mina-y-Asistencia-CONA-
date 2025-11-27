@@ -15,7 +15,7 @@ export const VALIDATION_REGEX = {
 export const VALIDATION_MESSAGES = {
     REQUIRED: "Campo obligatorio",
     EMAIL_INVALID: "Correo electrónico inválido",
-    EMAIL_DOMAIN: "Solo correos @utez.edu.mx o @cona.com permitidos",
+    EMAIL_DOMAIN: "Solo correos @utez.edu.mx, @cona.com o @gmail.com permitidos",
     PASSWORD_MIN_LENGTH: "La contraseña debe tener al menos 8 caracteres",
     PASSWORD_UPPERCASE: "La contraseña debe incluir al menos una mayúscula",
     PASSWORD_LOWERCASE: "La contraseña debe incluir al menos una minúscula",

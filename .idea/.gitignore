@@ -1,0 +1,13 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Editor-based HTTP Client requests
+/httpRequests/
+# Datasource local storage ignored files
+/dataSources/
+/dataSources.local.xml
+# IntelliJ IDEA
+.idea/
+*.iml
+# Firebase Admin SDK JSON
+CONA-BACK/src/main/resources/controldenominayasistencia-firebase-adminsdk-fbsvc-53eb6d0cdc.json
