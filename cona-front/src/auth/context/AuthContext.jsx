@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { authService } from "../services/authService";
+import { signOut as firebaseSignOut } from "firebase/auth";
+import { auth } from "../../firebaseConfig";
 
 const AuthContext = createContext(undefined);
 
@@ -30,8 +32,23 @@ export function AuthProvider({ children }) {
     return result;
   };
 
+  const loginWithGoogle = async (idToken) => {
+    const result = await authService.loginWithGoogle(idToken);
+    if (result.success && result.user) {
+      setUser(result.user);
+      setIsAuthenticated(true);
+      return result;
+    }
+    return result;
+  };
+
   const logout = async () => {
     await authService.logout();
+    try {
+      await firebaseSignOut(auth);
+    } catch (error) {
+      console.error("Error signing out from Firebase:", error);
+    }
     localStorage.clear();
     setUser(null);
     setIsAuthenticated(false);
@@ -39,7 +56,13 @@ export function AuthProvider({ children }) {
 
   if (isLoading) return null;
 
-  return <AuthContext.Provider value={{ user, login, logout, isAuthenticated }}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{ user, login, loginWithGoogle, logout, isAuthenticated }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

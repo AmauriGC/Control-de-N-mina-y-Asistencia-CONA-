@@ -61,6 +61,45 @@ export const authService = {
     }
   },
 
+  loginWithGoogle: async (idToken) => {
+    try {
+      const response = await axiosClient.post(API_ENDPOINTS.AUTH.LOGIN_GOOGLE, {
+        idToken,
+      });
+
+      if (response.success && response.data) {
+        const { token, expiresAt } = response.data;
+        if (!token) {
+          return { success: false, message: "Token no recibido" };
+        }
+        const payload = decodeJwtPayload(token);
+        if (!payload) {
+          return { success: false, message: "Token inválido" };
+        }
+        const role = String(payload.role || "").toLowerCase();
+        const user = {
+          id: payload.id,
+          email: payload.email || payload.sub,
+          role,
+          tokenExpiresAt: expiresAt,
+        };
+        tokenManager.setToken(token);
+        tokenManager.setUser(user);
+        return { success: true, user, token };
+      }
+
+      return {
+        success: false,
+        message: response.message || "Error al iniciar sesión con Google",
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.message || "Error al iniciar sesión con Google",
+      };
+    }
+  },
+
   logout: async () => {
     try {
       await axiosClient.post(API_ENDPOINTS.AUTH.LOGOUT);
