@@ -25,6 +25,7 @@ export default function JustificationsEmployee() {
   const [selectedAbsence, setSelectedAbsence] = useState(null);
   const [absences, setAbsences] = useState([])
   const [myJustifications, setMyJustifications] = useState([])
+  const [resolvedEmployeeId, setResolvedEmployeeId] = useState(null)
 
   const loadData = async () => {
     // Resolver employeeId (fallback si no viene en el token)
@@ -36,6 +37,7 @@ export default function JustificationsEmployee() {
       } catch {}
     }
     if (!empId) return
+    setResolvedEmployeeId(empId)
 
     // rango: últimos 3 días para ventana de 2 días
     const endDate = new Date().toISOString().split('T')[0]
@@ -46,8 +48,16 @@ export default function JustificationsEmployee() {
     ])
     if (attRange.success) {
       const today = new Date()
+      const myJ = (myJusts.success ? (myJusts.data || []) : [])
+      const hasActiveJust = (attendanceId) => {
+        const j = myJ.find(j => j.attendanceId === attendanceId)
+        if (!j) return false
+        const st = typeof j.status === 'string' ? j.status.toLowerCase() : j.status
+        return st !== 'rejected' // excluir pendientes y aprobados
+      }
       const pending = (attRange.data || [])
         .filter(r => r.status === 'ABSENT')
+        .filter(r => !hasActiveJust(r.id))
         .map(r => {
           const recDate = parseLocalDate(r.date)
           const diffDays = Math.floor((today - recDate) / (1000*60*60*24))
@@ -140,24 +150,25 @@ export default function JustificationsEmployee() {
                     <TableCell>{just.documentType}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{just.createdAt ? new Date(just.createdAt).toLocaleString('es-MX') : '-'}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          just.status === "approved"
-                            ? "default"
-                            : just.status === "rejected"
-                            ? "destructive"
-                            : "secondary"
-                        }
-                      >
-                        {just.status === "pending" && <Clock className="h-3 w-3 mr-1" />}
-                        {just.status === "approved" && <CheckCircle className="h-3 w-3 mr-1" />}
-                        {just.status === "rejected" && <XCircle className="h-3 w-3 mr-1" />}
-                        {just.status === "pending"
-                          ? "Pendiente"
-                          : just.status === "approved"
-                          ? "Aprobado"
-                          : "Rechazado"}
-                      </Badge>
+                      {(() => {
+                        const st = typeof just.status === 'string' ? just.status.toLowerCase() : just.status
+                        return (
+                          <Badge
+                            variant={
+                              st === "approved"
+                                ? "default"
+                                : st === "rejected"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                          >
+                            {st === "pending" && <Clock className="h-3 w-3 mr-1" />}
+                            {st === "approved" && <CheckCircle className="h-3 w-3 mr-1" />}
+                            {st === "rejected" && <XCircle className="h-3 w-3 mr-1" />}
+                            {st === "pending" ? "Pendiente" : st === "approved" ? "Aprobado" : "Rechazado"}
+                          </Badge>
+                        )
+                      })()}
                     </TableCell>
                     <TableCell className="text-sm">{just.reviewComments || "-"}</TableCell>
                   </TableRow>
@@ -176,14 +187,14 @@ export default function JustificationsEmployee() {
               Falta del {selectedAbsence?.date} - Sube tu documento de justificación
             </DialogDescription>
           </DialogHeader>
-          <JustificationForm absence={selectedAbsence} onClose={() => setIsDialogOpen(false)} />
+          <JustificationForm absence={selectedAbsence} employeeId={resolvedEmployeeId} onClose={() => setIsDialogOpen(false)} onSubmitted={loadData} />
         </DialogContent>
       </Dialog>
     </div>
   );
 }
 
-function JustificationForm({ absence, onClose }) {
+function JustificationForm({ absence, employeeId, onClose, onSubmitted }) {
   const [formData, setFormData] = useState({ documentType: "", comments: "", file: null });
   const { user } = useAuth()
 
@@ -224,7 +235,7 @@ function JustificationForm({ absence, onClose }) {
       return;
     }
     const payload = {
-      employeeId: user?.employeeId,
+      employeeId: employeeId || user?.employeeId,
       attendanceId: absence?.id,
       documentType: mapDocType(formData.documentType),
       reason: formData.comments || ''
@@ -233,11 +244,9 @@ function JustificationForm({ absence, onClose }) {
     if (res.success) {
       await alertConfig.toastSuccess({ title: "Justificación enviada", text: res.message || "Tu justificación ha sido enviada para revisión" })
       onClose()
-      // refrescar listas
-      await (typeof window !== 'undefined' ? Promise.resolve() : Promise.resolve())
-      // reload absences and my justifications
-      // reuse outer loadData through a custom event
-      try { await loadData() } catch {}
+      if (typeof onSubmitted === 'function') {
+        try { await onSubmitted() } catch {}
+      }
     } else {
       await alertConfig.toastError({ title: 'Error', text: res.message || 'No se pudo enviar la justificación' })
     }

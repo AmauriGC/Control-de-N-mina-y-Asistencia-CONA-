@@ -15,5 +15,6 @@ public record JustificationResponse(
         DocumentType documentType,
         String documentPath,
         JustificationStatus status,
+        String reviewComments,
         LocalDateTime createdAt
 ) {}

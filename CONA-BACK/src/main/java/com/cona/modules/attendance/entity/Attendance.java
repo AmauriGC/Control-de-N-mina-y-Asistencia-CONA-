@@ -47,7 +47,7 @@ public class Attendance {
     private String comments;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 40)
     private AttendanceStatus status;
 
     @CreatedDate

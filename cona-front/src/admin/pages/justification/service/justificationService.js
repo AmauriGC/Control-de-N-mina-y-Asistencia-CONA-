@@ -22,8 +22,8 @@ export const justificationService = {
 	async submit({ employeeId, attendanceId, documentType, reason }, file) {
 		try {
 			const form = new FormData()
-			const payload = new Blob([JSON.stringify({ employeeId, attendanceId, documentType, reason })], { type: 'application/json' })
-			form.append('payload', payload)
+			const json = JSON.stringify({ employeeId, attendanceId, documentType, reason })
+			form.append('payload', new File([json], 'payload.json', { type: 'application/json' }))
 			if (file) form.append('file', file)
 			const res = await axiosClient.post('/justifications', form, { headers: { 'Content-Type': 'multipart/form-data' } })
 			return { success: res.success, data: res.data, message: res.message }
@@ -47,6 +47,19 @@ export const justificationService = {
 			return { success: res.success, data: res.data, message: res.message }
 		} catch (error) {
 			return { success: false, message: error.message || 'Error al rechazar la justificación' }
+		}
+	},
+
+	async openDocument(id) {
+		try {
+			const res = await axiosClient.get(`/justifications/${id}/file`, { responseType: 'blob' })
+			const blob = new Blob([res], { type: res.type || 'application/octet-stream' })
+			const url = URL.createObjectURL(blob)
+			window.open(url, '_blank', 'noopener,noreferrer')
+			setTimeout(() => URL.revokeObjectURL(url), 60_000)
+			return { success: true }
+		} catch (error) {
+			return { success: false, message: error.message || 'No se pudo abrir el documento' }
 		}
 	}
 }

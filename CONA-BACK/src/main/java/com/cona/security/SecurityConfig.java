@@ -75,6 +75,7 @@ public class SecurityConfig {
 
                         // Justifications: method-specific rules
                         .requestMatchers(HttpMethod.GET, "/justifications").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/justifications/*/file").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.POST, "/justifications").hasRole("EMPLOYEE")
                         .requestMatchers("/justifications/employee/*").hasRole("EMPLOYEE")
                         .requestMatchers("/justifications/*/approve", "/justifications/*/reject").hasRole("ADMIN")

@@ -103,6 +103,9 @@ public class JustificationServiceImpl implements JustificationService {
         Justification j = justificationRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("JUSTIFICATION_NOT_FOUND", "Justificación no encontrada"));
         j.setStatus(JustificationStatus.APPROVED);
+        if (adminComments != null && !adminComments.isBlank()) {
+            j.setReviewComments(adminComments.trim());
+        }
         // Actualizar asistencia a JUSTIFIED_ABSENCE, sin pago
         Attendance attendance = j.getAttendance();
         if (attendance != null) {
@@ -119,21 +122,30 @@ public class JustificationServiceImpl implements JustificationService {
         Justification j = justificationRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("JUSTIFICATION_NOT_FOUND", "Justificación no encontrada"));
         j.setStatus(JustificationStatus.REJECTED);
+        if (adminComments != null && !adminComments.isBlank()) {
+            j.setReviewComments(adminComments.trim());
+        }
+        Attendance attendance = j.getAttendance();
+        if (attendance != null) {
+            attendance.setStatus(AttendanceStatus.JUSTIFICATION_REJECTED);
+            attendanceRepository.save(attendance);
+        }
         j = justificationRepository.save(j);
         return map(j);
     }
 
     private JustificationResponse map(Justification j) {
         return new JustificationResponse(
-                j.getId(),
-                j.getEmployee().getId(),
-                j.getAttendance() != null ? j.getAttendance().getId() : null,
-                j.getDate(),
-                j.getReason(),
-                j.getDocumentType(),
-                j.getDocumentPath(),
-                j.getStatus(),
-                j.getCreatedAt()
+            j.getId(),
+            j.getEmployee().getId(),
+            j.getAttendance() != null ? j.getAttendance().getId() : null,
+            j.getDate(),
+            j.getReason(),
+            j.getDocumentType(),
+            j.getDocumentPath(),
+            j.getStatus(),
+            j.getReviewComments(),
+            j.getCreatedAt()
         );
     }
 }

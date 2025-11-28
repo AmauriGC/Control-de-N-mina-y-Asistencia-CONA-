@@ -27,7 +27,8 @@ export default function JustificationsAdmin() {
 
   useEffect(() => { loadJustifications() }, [])
 
-  const pendingCount = justifications.filter((j) => j.status === "pending").length;
+  const normStatus = (s) => (typeof s === 'string' ? s.toLowerCase() : s);
+  const pendingCount = justifications.filter((j) => normStatus(j.status) === "pending").length;
 
   const handleReview = (j) => {
     setSelected(j);
@@ -112,23 +113,23 @@ export default function JustificationsAdmin() {
                     </TableCell>
                     <TableCell className="font-medium">{just.date}</TableCell>
                     <TableCell>{just.documentType}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{/* submittedAt not provided */}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{just.createdAt ? new Date(just.createdAt).toLocaleString('es-MX') : '-'}</TableCell>
                     <TableCell>
                       <Badge
                         variant={
-                          just.status === "approved"
+                          normStatus(just.status) === "approved"
                             ? "default"
-                            : just.status === "rejected"
+                            : normStatus(just.status) === "rejected"
                             ? "destructive"
                             : "secondary"
                         }
                       >
-                        {just.status === "pending" && <Clock className="h-3 w-3 mr-1" />}
-                        {just.status === "approved" && <CheckCircle className="h-3 w-3 mr-1" />}
-                        {just.status === "rejected" && <XCircle className="h-3 w-3 mr-1" />}
-                        {just.status === "pending"
+                        {normStatus(just.status) === "pending" && <Clock className="h-3 w-3 mr-1" />}
+                        {normStatus(just.status) === "approved" && <CheckCircle className="h-3 w-3 mr-1" />}
+                        {normStatus(just.status) === "rejected" && <XCircle className="h-3 w-3 mr-1" />}
+                        {normStatus(just.status) === "pending"
                           ? "Pendiente"
-                          : just.status === "approved"
+                          : normStatus(just.status) === "approved"
                           ? "Aprobado"
                           : "Rechazado"}
                       </Badge>
@@ -136,11 +137,11 @@ export default function JustificationsAdmin() {
                     <TableCell>
                       <Button
                         size="sm"
-                        variant={just.status === "pending" ? "default" : "outline"}
+                        variant={normStatus(just.status) === "pending" ? "default" : "outline"}
                         onClick={() => handleReview(just)}
                       >
                         <Eye className="h-4 w-4 mr-1" />
-                        {just.status === "pending" ? "Revisar" : "Ver"}
+                        {normStatus(just.status) === "pending" ? "Revisar" : "Ver"}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -176,6 +177,13 @@ export default function JustificationsAdmin() {
 function ReviewForm({ justification, onApprove, onReject, onClose }) {
   const [comments, setComments] = useState("");
   const commentsField = useFieldValidation(comments, justificationReviewRules);
+  const status = typeof justification?.status === 'string' ? justification.status.toLowerCase() : justification?.status;
+  const handleView = async () => {
+    const r = await justificationService.openDocument(justification.id);
+    if (!r.success) {
+      await alertConfig.toastError({ title: 'No se pudo abrir', text: r.message || 'Error al abrir documento' })
+    }
+  }
   return (
     <div className="space-y-6">
       <div className="space-y-4 p-4 rounded-lg border border-border bg-gradient-to-br from-primary/10 via-background to-background shadow-xs">
@@ -186,23 +194,23 @@ function ReviewForm({ justification, onApprove, onReject, onClose }) {
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Fecha de Envío</p>
-            <p className="font-medium">{justification.submittedAt}</p>
+            <p className="font-medium">{justification.createdAt ? new Date(justification.createdAt).toLocaleString('es-MX') : '-'}</p>
           </div>
         </div>
         <div>
           <p className="text-sm text-muted-foreground">Comentarios del Empleado</p>
-          <p className="font-medium">{justification.comments || "Sin comentarios"}</p>
+          <p className="font-medium">{justification.reason || "Sin comentarios"}</p>
         </div>
         <div>
           <p className="text-sm text-muted-foreground mb-2">Documento Adjunto</p>
-          <Button variant="outline" className="w-full">
+          <Button variant="outline" className="w-full" onClick={handleView}>
             <FileText className="h-4 w-4 mr-2" />
             Ver Documento
           </Button>
         </div>
       </div>
 
-      {justification.status === "pending" ? (
+      {status === "pending" ? (
         <>
           <div className="space-y-2">
             <Label htmlFor="adminComments">Comentarios de Revisión *</Label>

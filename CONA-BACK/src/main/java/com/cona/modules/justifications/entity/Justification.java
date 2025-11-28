@@ -50,6 +50,9 @@ public class Justification {
     @Column(nullable = false)
     private JustificationStatus status;
 
+    @Column(length = 500)
+    private String reviewComments;
+
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
