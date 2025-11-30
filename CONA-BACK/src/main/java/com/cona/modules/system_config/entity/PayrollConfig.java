@@ -33,6 +33,9 @@ public class PayrollConfig {
     @Column(name = "late_penalty", nullable = false, precision = 10, scale = 2)
     private BigDecimal latePenalty;
 
+    @Column(name = "bonus_amount", nullable = false, precision = 10, scale = 2)
+    private BigDecimal bonusAmount;
+
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

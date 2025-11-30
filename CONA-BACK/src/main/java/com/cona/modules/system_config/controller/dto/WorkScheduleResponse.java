@@ -13,6 +13,7 @@ public class WorkScheduleResponse {
     private LocalTime exitTime;
     private Integer toleranceMinutes;
     private String description;
+    private Boolean active;
     private Integer totalHoursPerDay;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

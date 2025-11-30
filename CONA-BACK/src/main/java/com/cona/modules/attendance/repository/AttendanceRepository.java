@@ -20,6 +20,9 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     
     List<Attendance> findByEmployeeAndDateBetweenOrderByDateDesc(Employee employee, LocalDate startDate, LocalDate endDate);
     
+    @Query("SELECT a FROM Attendance a WHERE a.employee.id = :employeeId AND a.date BETWEEN :startDate AND :endDate ORDER BY a.date DESC")
+    List<Attendance> findByEmployeeIdAndDateBetweenOrderByDateDesc(@Param("employeeId") Long employeeId, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+    
     @Query("SELECT a FROM Attendance a WHERE a.date = :date ORDER BY a.createdAt DESC")
     List<Attendance> findByDateOrderByCreatedAtDesc(@Param("date") LocalDate date);
     
@@ -34,4 +37,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     
     @Query("SELECT COUNT(a) FROM Attendance a WHERE a.employee = :employee AND a.date BETWEEN :startDate AND :endDate AND a.status = 'ABSENT'")
     long countAbsentDaysByEmployeeAndDateRange(@Param("employee") Employee employee, @Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+    
+    @Query("SELECT a FROM Attendance a WHERE a.employee.id = :employeeId AND a.date = :date")
+    List<Attendance> findByEmployeeIdAndDate(@Param("employeeId") Long employeeId, @Param("date") LocalDate date);
 }

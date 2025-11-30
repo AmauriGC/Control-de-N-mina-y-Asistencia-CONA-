@@ -4,7 +4,10 @@ import com.cona.modules.system_config.entity.WorkSchedule;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface WorkScheduleRepository extends JpaRepository<WorkSchedule, Long> {
     boolean existsByName(String name);
+    List<WorkSchedule> findByActiveTrue();
 }

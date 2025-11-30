@@ -57,14 +57,23 @@ export const API_ENDPOINTS = {
         },
         WORK_SCHEDULES: {
             LIST: "/system-config/work-schedules",
+            ACTIVE: "/system-config/work-schedules/active",
             CREATE: "/system-config/work-schedules",
             GET_BY_ID: "/system-config/work-schedules/:id",
             UPDATE: "/system-config/work-schedules/:id",
+            TOGGLE_STATUS: "/system-config/work-schedules/:id/toggle-status",
             DELETE: "/system-config/work-schedules/:id",
         },
         PAYROLL_CONFIG: {
             GET: "/system-config/payroll-config",
             UPDATE: "/system-config/payroll-config",
         },
+    },
+    PAYROLL: {
+        LIST: "/api/payroll",
+        CALCULATE: "/api/payroll/calculate",
+        GET_BY_EMPLOYEE: "/api/payroll/employee/:employeeId",
+        GET_DETAIL: "/api/payroll/employee/:employeeId/detail",
+        GET_LATEST: "/api/payroll/employee/:employeeId/latest",
     },
 };

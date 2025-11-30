@@ -11,6 +11,7 @@ public class PayrollConfigResponse {
     private BigDecimal isrFixed;
     private BigDecimal imssFixed;
     private BigDecimal latePenalty;
+    private BigDecimal bonusAmount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -25,6 +25,7 @@ public class WorkScheduleService {
         dto.setExitTime(entity.getEndTime());
         dto.setToleranceMinutes(entity.getToleranceMinutes());
         dto.setDescription(entity.getDescription());
+        dto.setActive(entity.getActive());
         dto.setTotalHoursPerDay(entity.getTotalHoursPerDay());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
@@ -78,6 +79,21 @@ public class WorkScheduleService {
         return workScheduleRepository.findAll().stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
+    }
+
+    public List<WorkScheduleResponse> getActive() {
+        return workScheduleRepository.findByActiveTrue().stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public WorkScheduleResponse toggleStatus(Long id) {
+        WorkSchedule entity = workScheduleRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("WorkSchedule not found"));
+        entity.setActive(!entity.getActive());
+        WorkSchedule saved = workScheduleRepository.save(entity);
+        return toDto(saved);
     }
 
     @Transactional

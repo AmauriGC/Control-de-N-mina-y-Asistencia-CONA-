@@ -44,6 +44,18 @@ public class WorkScheduleController {
         return ApiResponse.success("Horarios de trabajo obtenidos exitosamente", responses);
     }
 
+    @GetMapping("/active")
+    public ApiResponse<List<WorkScheduleResponse>> getActive() {
+        List<WorkScheduleResponse> responses = service.getActive();
+        return ApiResponse.success("Horarios de trabajo activos obtenidos exitosamente", responses);
+    }
+
+    @PutMapping("/{id}/toggle-status")
+    public ApiResponse<WorkScheduleResponse> toggleStatus(@PathVariable Long id) {
+        WorkScheduleResponse response = service.toggleStatus(id);
+        return ApiResponse.success("Estado del horario cambiado exitosamente", response);
+    }
+
     @DeleteMapping("/{id}")
     public ApiResponse<String> delete(@PathVariable Long id) {
         service.delete(id);

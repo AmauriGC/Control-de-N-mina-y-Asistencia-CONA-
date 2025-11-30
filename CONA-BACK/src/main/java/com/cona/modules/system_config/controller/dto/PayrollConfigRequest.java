@@ -30,4 +30,9 @@ public class PayrollConfigRequest {
     @DecimalMin(value = "0.00", message = "La penalización debe ser mayor o igual a 0")
     @Digits(integer = 8, fraction = 2, message = "La penalización debe tener máximo 2 decimales")
     private BigDecimal latePenalty;
+
+    @NotNull(message = "El bono es obligatorio")
+    @DecimalMin(value = "0.00", message = "El bono debe ser mayor o igual a 0")
+    @Digits(integer = 8, fraction = 2, message = "El bono debe tener máximo 2 decimales")
+    private BigDecimal bonusAmount;
 }

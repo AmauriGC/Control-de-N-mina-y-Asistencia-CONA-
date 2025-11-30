@@ -25,6 +25,7 @@ public class PayrollConfigService {
         dto.setIsrFixed(entity.getIsrFixed());
         dto.setImssFixed(entity.getImssFixed());
         dto.setLatePenalty(entity.getLatePenalty());
+        dto.setBonusAmount(entity.getBonusAmount());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;
@@ -45,6 +46,7 @@ public class PayrollConfigService {
         config.setIsrFixed(dto.getIsrFixed());
         config.setImssFixed(dto.getImssFixed());
         config.setLatePenalty(dto.getLatePenalty());
+        config.setBonusAmount(dto.getBonusAmount());
 
         PayrollConfig savedConfig = payrollConfigRepository.save(config);
         return toDto(savedConfig);
@@ -61,6 +63,7 @@ public class PayrollConfigService {
             defaultConfig.setIsrFixed(BigDecimal.valueOf(100.0));
             defaultConfig.setImssFixed(BigDecimal.valueOf(100.0));
             defaultConfig.setLatePenalty(BigDecimal.valueOf(0));
+            defaultConfig.setBonusAmount(BigDecimal.valueOf(500.0));
             defaultConfig.setCreatedAt(null);
             defaultConfig.setUpdatedAt(null);
             return defaultConfig;

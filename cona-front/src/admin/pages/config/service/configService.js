@@ -55,11 +55,17 @@ export const systemConfigService = {
     async getAll(params = {}) {
       return await axiosClient.get(API_ENDPOINTS.SYSTEM_CONFIG.WORK_SCHEDULES.LIST, { params });
     },
+    async getActive(params = {}) {
+      return await axiosClient.get(API_ENDPOINTS.SYSTEM_CONFIG.WORK_SCHEDULES.ACTIVE, { params });
+    },
     async create(workScheduleData) {
       return await axiosClient.post(API_ENDPOINTS.SYSTEM_CONFIG.WORK_SCHEDULES.CREATE, workScheduleData);
     },
     async update(id, workScheduleData) {
       return await axiosClient.put(API_ENDPOINTS.SYSTEM_CONFIG.WORK_SCHEDULES.UPDATE.replace(':id', id), workScheduleData);
+    },
+    async toggleStatus(id) {
+      return await axiosClient.put(API_ENDPOINTS.SYSTEM_CONFIG.WORK_SCHEDULES.TOGGLE_STATUS.replace(':id', id));
     },
     async delete(id) {
       return await axiosClient.delete(API_ENDPOINTS.SYSTEM_CONFIG.WORK_SCHEDULES.DELETE.replace(':id', id));

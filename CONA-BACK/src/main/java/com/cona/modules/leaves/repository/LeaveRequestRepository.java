@@ -26,4 +26,11 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     List<LeaveRequest> findByStatusOrderByCreatedAtAsc(LeaveStatus status);
     
     long countByStatus(LeaveStatus status);
+    
+    @Query("SELECT lr FROM LeaveRequest lr WHERE lr.employee.id = :employeeId AND " +
+           "lr.status = :status AND " +
+           "(:checkDate BETWEEN lr.startDate AND lr.endDate)")
+    List<LeaveRequest> findByEmployeeIdAndDateAndStatus(@Param("employeeId") Long employeeId,
+                                                       @Param("checkDate") java.time.LocalDate checkDate,
+                                                       @Param("status") LeaveStatus status);
 }

@@ -7,6 +7,7 @@ import {makeRules, rulesLib, useFieldValidation} from "@/components/criteria/use
 import {alertConfig} from "@/lib/alert-config";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 import {Calendar} from "@/components/ui/calendar";
+import {systemConfigService} from "@/admin/pages/config/service/configService";
 
 function EmployeeForm({onSave, onClose, editingEmployee}) {
     const [formData, setFormData] = useState({
@@ -27,6 +28,7 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
 
     const [currentStep, setCurrentStep] = useState(1);
     const totalSteps = 3;
+    const [activeWorkSchedules, setActiveWorkSchedules] = useState([]);
 
     useEffect(() => {
         if (editingEmployee) {
@@ -149,6 +151,23 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
     );
 
     const [submitting, setSubmitting] = useState(false);
+
+    // Cargar horarios activos al montar el componente
+    useEffect(() => {
+        const loadActiveWorkSchedules = async () => {
+            try {
+                const response = await systemConfigService.workSchedules.getActive();
+                if (response.success) {
+                    setActiveWorkSchedules(response.data);
+                }
+            } catch (error) {
+                console.error("Error loading active work schedules:", error);
+                alertConfig.toastError({ title: "Error", text: "No se pudieron cargar los horarios de trabajo" });
+            }
+        };
+
+        loadActiveWorkSchedules();
+    }, []);
 
     const nextStep = () => {
         if (currentStep === 1) {
@@ -346,9 +365,11 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                         <SelectValue placeholder="Selecciona horario"/>
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="1">Horario 1 (9:00 - 18:00)</SelectItem>
-                                        <SelectItem value="2">Horario 2 (8:00 - 17:00)</SelectItem>
-                                        {/* Asumir IDs de horarios, ajustar según backend */}
+                                        {activeWorkSchedules.map((schedule) => (
+                                            <SelectItem key={schedule.id} value={schedule.id.toString()}>
+                                                {schedule.name} ({schedule.entryTime} - {schedule.exitTime})
+                                            </SelectItem>
+                                        ))}
                                     </SelectContent>
                                 </Select>
                             </div>
