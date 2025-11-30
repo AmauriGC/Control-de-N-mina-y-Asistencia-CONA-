@@ -8,6 +8,7 @@ import com.cona.modules.attendance.controller.dto.TodayAttendanceCountsDto;
 import com.cona.modules.attendance.service.AttendanceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,6 +33,15 @@ public class AttendanceController {
     public ApiResponse<List<AttendanceResponseDto>> getEmployeeAttendance(@PathVariable Long employeeId) {
         List<AttendanceResponseDto> attendance = attendanceService.getEmployeeAttendance(employeeId);
         return ApiResponse.success("Asistencia del empleado obtenida", attendance);
+    }
+
+    @GetMapping("/employee/{employeeId}/paginated")
+    public ApiResponse<Page<AttendanceResponseDto>> getEmployeeAttendancePaginated(
+            @PathVariable Long employeeId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "15") int size) {
+        Page<AttendanceResponseDto> attendancePage = attendanceService.getEmployeeAttendancePaginated(employeeId, page, size);
+        return ApiResponse.success("Asistencia paginada del empleado obtenida", attendancePage);
     }
 
     @GetMapping("/employee/{employeeId}/range")

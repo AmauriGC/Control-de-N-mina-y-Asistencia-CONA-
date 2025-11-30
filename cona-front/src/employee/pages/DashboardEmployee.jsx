@@ -20,9 +20,13 @@ export default function DashboardEmployee() {
   const [attendanceLoading, setAttendanceLoading] = useState(false)
   const [latestPayroll, setLatestPayroll] = useState(null)
   const [payrollLoading, setPayrollLoading] = useState(false)
+  const [monthlyStats, setMonthlyStats] = useState({ totalDays: 0, presentDays: 0, lateDays: 0, absentDays: 0, vacationDays: 0 })
+  const [statsLoading, setStatsLoading] = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
 
   useEffect(() => {
     if (user?.id) {
+      console.log('Loading profile for user:', user.id)
       loadProfile()
     }
   }, [user])
@@ -30,21 +34,56 @@ export default function DashboardEmployee() {
   const loadProfile = async () => {
     try {
       setProfileLoading(true)
+      console.log('Fetching employee profile for user ID:', user.id)
       const response = await employeeService.getByUserId(user.id)
+      console.log('Profile response:', response)
+      
       if (response.success) {
         setProfile(response.data)
-        // Cargar asistencia reciente y nómina
+        console.log('Employee profile loaded:', response.data)
+        console.log('Employee ID:', response.data.id)
+        
+        // Cargar asistencia reciente, nómina y estadísticas
         loadRecentAttendance(response.data.id)
         loadLatestPayroll(response.data.id)
+        loadMonthlyStats(response.data.id)
       } else {
+        console.error('Failed to load profile:', response.message)
         if (response.message) {
           alertConfig.toastError({ title: "Error", text: response.message })
         }
       }
     } catch (error) {
+      console.error('Profile loading error:', error)
       alertConfig.toastError({ title: "Error", text: "No se pudo cargar el perfil" })
     } finally {
       setProfileLoading(false)
+    }
+  }
+
+  const handleDownloadPayrollPdf = async () => {
+    if (!profile?.id || !latestPayroll) return
+    try {
+      setDownloadingPdf(true)
+      const res = await payrollService.downloadLatestPayrollPdf(profile.id)
+      if (!res.success) {
+        throw new Error(res.message || 'No se pudo descargar el PDF')
+      }
+      const blob = new Blob([res.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      const start = latestPayroll?.periodStart || ''
+      const end = latestPayroll?.periodEnd || ''
+      a.href = url
+      a.download = `nomina_${start}_a_${end}.pdf`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (e) {
+      alertConfig.toastError({ title: 'Error', text: e.message || 'Error al descargar PDF' })
+    } finally {
+      setDownloadingPdf(false)
     }
   }
   const loadRecentAttendance = async (employeeId) => {
@@ -64,21 +103,41 @@ export default function DashboardEmployee() {
   const loadLatestPayroll = async (employeeId) => {
     try {
       setPayrollLoading(true)
-      console.log('Loading payroll for employee:', employeeId)
+            console.log('Loading payroll for employee:', employeeId)
       const res = await payrollService.getLatestPayroll(employeeId)
       console.log('Payroll response:', res)
       if (res.success) {
         setLatestPayroll(res.data)
-        console.log('Payroll data set:', res.data)
       } else {
-        console.error('Payroll error:', res.message)
-        alertConfig.toastError({ title: "Error", text: res.message })
+        console.warn('No payroll data available:', res.message)
+        // No mostrar error si simplemente no hay datos de nómina
+        setLatestPayroll(null)
       }
     } catch (e) {
-      console.error('Payroll exception:', e)
-      alertConfig.toastError({ title: "Error", text: "No se pudo cargar la nómina" })
+      console.warn('Payroll not available:', e.message)
+      // Solo mostrar error si es un error real, no falta de datos
+      setLatestPayroll(null)
     } finally {
       setPayrollLoading(false)
+    }
+  }
+
+  const loadMonthlyStats = async (employeeId) => {
+    try {
+      setStatsLoading(true)
+      // Obtener estadísticas del mes actual
+      const now = new Date()
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+      
+      const res = await attendanceService.getEmployeeStats(employeeId, firstDayOfMonth, lastDayOfMonth)
+      if (res.success) {
+        setMonthlyStats(res.data)
+      }
+    } catch (e) {
+      console.error('Stats error:', e)
+    } finally {
+      setStatsLoading(false)
     }
   }
 
@@ -86,17 +145,43 @@ export default function DashboardEmployee() {
     <div className="p-8 space-y-8 min-h-screen">
       <div>
         <h1 className="text-3xl font-bold text-balance">Mi Dashboard</h1>
-        <p className="text-muted-foreground">Bienvenido, {user?.name}</p>
+        <p className="text-muted-foreground">
+          Bienvenido, {user?.name}
+          {profile && <span> (ID Empleado: {profile.id})</span>}
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {profileLoading ? (
+        <Card>
+          <CardContent className="py-8">
+            <div className="text-center text-muted-foreground">
+              Cargando información del empleado...
+            </div>
+          </CardContent>
+        </Card>
+      ) : !profile ? (
+        <Card>
+          <CardContent className="py-8">
+            <div className="text-center text-muted-foreground">
+              <p>No se pudo cargar la información del empleado.</p>
+              <p className="text-sm mt-2">Por favor, contacte al administrador del sistema.</p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {profile && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Días Trabajados</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">18</div>
+            <div className="text-3xl font-bold">
+              {statsLoading ? '-' : (monthlyStats.presentDays + monthlyStats.lateDays)}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">Este mes</p>
           </CardContent>
         </Card>
@@ -107,8 +192,10 @@ export default function DashboardEmployee() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground mt-1">Disponibles</p>
+            <div className="text-3xl font-bold">
+              {statsLoading ? '-' : monthlyStats.vacationDays}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">Este mes</p>
           </CardContent>
         </Card>
 
@@ -118,7 +205,9 @@ export default function DashboardEmployee() {
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">1</div>
+            <div className="text-3xl font-bold">
+              {statsLoading ? '-' : monthlyStats.lateDays}
+            </div>
             <p className="text-xs text-muted-foreground mt-1">Este mes</p>
           </CardContent>
         </Card>
@@ -134,6 +223,13 @@ export default function DashboardEmployee() {
           <CardDescription>
             {latestPayroll ? payrollService.formatPayrollPeriod(latestPayroll.periodStart, latestPayroll.periodEnd) : 'Información de nómina'}
           </CardDescription>
+          {latestPayroll && (
+            <div className="mt-2 flex justify-end">
+              <Button variant="outline" size="sm" onClick={handleDownloadPayrollPdf} disabled={downloadingPdf}>
+                {downloadingPdf ? 'Descargando…' : 'Descargar PDF'}
+              </Button>
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {payrollLoading ? (
@@ -180,13 +276,14 @@ export default function DashboardEmployee() {
                 <span className="font-medium">Salario Base:</span>
                 <span className="text-lg font-semibold">{payrollService.formatCurrency(latestPayroll.baseSalary)}</span>
               </div>
-              
-              {latestPayroll.latePenaltyDeduction > 0 && (
-                <div className="flex justify-between items-center text-red-600">
-                  <span className="font-medium">Descuento por Retardos:</span>
-                  <span className="text-lg font-semibold">-{payrollService.formatCurrency(latestPayroll.latePenaltyDeduction)}</span>
-                </div>
-              )}
+              <div className="flex justify-between items-center text-red-600">
+                  <span className="font-medium">Descuento por IMSS:</span>
+                  <span className="text-lg font-semibold">-{payrollService.formatCurrency(latestPayroll.imssDeduction)}</span>
+              </div>
+              <div className="flex justify-between items-center text-red-600">
+                  <span className="font-medium">Descuento por ISR:</span>
+                  <span className="text-lg font-semibold">-{payrollService.formatCurrency(latestPayroll.isrDeduction)}</span>
+              </div>
               
               {latestPayroll.bonus > 0 && (
                 <div className="flex justify-between items-center text-green-600">
@@ -230,8 +327,20 @@ export default function DashboardEmployee() {
                     <p className="font-medium">{formatISODateLocal(record.date)}</p>
                     <p className="text-sm text-muted-foreground">Entrada: {record.checkInTime || '-'} | Salida: {record.checkOutTime || '-'}</p>
                   </div>
-                  <Badge variant={record.status === 'LATE' ? 'destructive' : 'secondary'}>
-                    {record.status === 'LATE' ? 'Retardo' : 'A tiempo'}
+                  <Badge variant={
+                    record.status === 'LATE' ? 'destructive' : 
+                    record.status === 'ABSENT' ? 'destructive' : 
+                    record.status === 'VACATION' ? 'outline' :
+                    record.status === 'JUSTIFIED_ABSENCE' ? 'secondary' :
+                    record.status === 'HOLIDAY' ? 'default' :
+                    record.status === 'NON_WORKING_DAY' ? 'secondary' : 'default'
+                  }>
+                    {record.status === 'LATE' ? 'Retardo' : 
+                     record.status === 'ABSENT' ? 'Falta' :
+                     record.status === 'VACATION' ? 'Vacaciones' :
+                     record.status === 'JUSTIFIED_ABSENCE' ? 'Justificado' :
+                     record.status === 'HOLIDAY' ? 'Día festivo' :
+                     record.status === 'NON_WORKING_DAY' ? 'Día no laboral' : 'A tiempo'}
                   </Badge>
                 </div>
               ))
@@ -296,6 +405,8 @@ export default function DashboardEmployee() {
           )}
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   )
 }

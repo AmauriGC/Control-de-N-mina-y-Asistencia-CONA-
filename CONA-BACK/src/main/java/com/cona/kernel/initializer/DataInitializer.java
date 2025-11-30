@@ -35,7 +35,7 @@ import java.util.Random;
 
 @Component
 @ConditionalOnProperty(name = "app.seed.enabled", havingValue = "true", matchIfMissing = true)
-public class DataInitializer implements CommandLineRunner {
+public class    DataInitializer implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
@@ -225,6 +225,7 @@ public class DataInitializer implements CommandLineRunner {
                 .imssFixed(BigDecimal.valueOf(150.00))
                 .latePenalty(BigDecimal.valueOf(50.00))
                 .bonusAmount(BigDecimal.valueOf(500.00))
+                .isActive(true)
                 .build();
 
         payrollConfigs.save(config);
@@ -265,14 +266,14 @@ public class DataInitializer implements CommandLineRunner {
                 attendance.setStatus(AttendanceStatus.PRESENT);
                 attendance.setCheckInTime(LocalTime.of(8, random.nextInt(30)));
                 attendance.setCheckOutTime(LocalTime.of(16, random.nextInt(60)));
-                attendance.setHoursWorked(8.0 + random.nextDouble() * 0.5);
+                attendance.setHoursWorked(8.0); // Solo horas completas
                 attendance.setDailySalary(employee.getHourlyRate().multiply(BigDecimal.valueOf(attendance.getHoursWorked())));
                 
             } else if (statusRandom < 75) { // 15% Late
                 attendance.setStatus(AttendanceStatus.LATE);
                 attendance.setCheckInTime(LocalTime.of(8, 30 + random.nextInt(30))); // Llegada tardía (max 30 minutos)
                 attendance.setCheckOutTime(LocalTime.of(16, random.nextInt(60)));
-                attendance.setHoursWorked(7.5 + random.nextDouble() * 0.5);
+                attendance.setHoursWorked(7.0); // Solo horas completas
                 // El salario con descuento se calculará en el servicio
                 attendance.setDailySalary(employee.getHourlyRate().multiply(BigDecimal.valueOf(attendance.getHoursWorked())));
                 
