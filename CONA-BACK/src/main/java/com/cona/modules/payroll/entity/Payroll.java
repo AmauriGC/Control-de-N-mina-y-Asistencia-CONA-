@@ -85,6 +85,16 @@ public class Payroll {
     @Column(name = "has_bonus_penalties", nullable = false)
     private Boolean hasBonusPenalties = false;
 
+    // Descuentos específicos
+    @Column(name = "isr_deduction", nullable = false, precision = 10, scale = 2)
+    private BigDecimal isrDeduction = BigDecimal.ZERO;
+
+    @Column(name = "imss_deduction", nullable = false, precision = 10, scale = 2)
+    private BigDecimal imssDeduction = BigDecimal.ZERO;
+
+    @Column(name = "total_deductions", nullable = false, precision = 10, scale = 2)
+    private BigDecimal totalDeductions = BigDecimal.ZERO;
+
     // Campos originales mantenidos para compatibilidad
     @Column(precision = 10, scale = 2)
     private BigDecimal deductions = BigDecimal.ZERO;

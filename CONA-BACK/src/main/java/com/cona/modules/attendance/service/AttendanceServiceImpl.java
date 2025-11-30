@@ -13,17 +13,22 @@ import com.cona.modules.employees.enums.EmployeeStatus;
 import com.cona.modules.leaves.entity.Leave;
 import com.cona.modules.leaves.repository.LeaveRepository;
 import com.cona.modules.system_config.entity.Holiday;
+import com.cona.modules.system_config.entity.PayrollConfig;
 import com.cona.modules.system_config.entity.WorkSchedule;
 import com.cona.modules.system_config.repository.HolidayRepository;
 import com.cona.modules.attendance.controller.dto.TodayAttendanceCountsDto;
 import com.cona.modules.leaves.enums.LeaveType;
+import com.cona.modules.system_config.repository.PayrollConfigRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -40,6 +45,7 @@ public class AttendanceServiceImpl implements AttendanceService {
     private final EmployeeRepository employeeRepository;
     private final HolidayRepository holidayRepository;
     private final LeaveRepository leaveRepository;
+    private final PayrollConfigRepository payrollConfigRepository;
 
     @Override
     public AttendanceResponseDto processCheckInOut(CheckInOutRequestDto request) {
@@ -49,11 +55,10 @@ public class AttendanceServiceImpl implements AttendanceService {
         LocalDate today = LocalDate.now();
         LocalTime now = LocalTime.now();
 
-        Optional<Attendance> existingAttendance = attendanceRepository.findByEmployeeAndDate(employee, today);
+        List<Attendance> existingAttendanceList = attendanceRepository.findByEmployeeAndDate(employee, today);
 
-        if (existingAttendance.isPresent()) {
-            Attendance todayAttendance = existingAttendance.get();
-            // Si ya tiene check-in y check-out no permitir nueva actualización
+        if (!existingAttendanceList.isEmpty()) {
+            Attendance todayAttendance = existingAttendanceList.get(0);
             if (todayAttendance.getCheckInTime() != null && todayAttendance.getCheckOutTime() != null) {
                 log.info("Intento adicional de registro: empleado {} ya completó entrada y salida hoy", employee.getEmployeeKey());
                 throw new BusinessException(
@@ -61,10 +66,8 @@ public class AttendanceServiceImpl implements AttendanceService {
                         "Ya ha completado su registro del día"
                 );
             }
-            // Registrar salida si aún falta
             return processCheckOut(todayAttendance, now);
         } else {
-            // Registrar entrada inicial
             return processCheckIn(employee, today, now);
         }
     }
@@ -75,7 +78,6 @@ public class AttendanceServiceImpl implements AttendanceService {
         attendance.setDate(date);
         attendance.setCheckInTime(checkInTime);
         
-        // Determinar el status basado en el horario
         AttendanceStatus status = determineAttendanceStatus(employee, checkInTime);
         attendance.setStatus(status);
 
@@ -88,20 +90,27 @@ public class AttendanceServiceImpl implements AttendanceService {
     private AttendanceResponseDto processCheckOut(Attendance attendance, LocalTime checkOutTime) {
         attendance.setCheckOutTime(checkOutTime);
         
-        // Calcular horas trabajadas
-        if (attendance.getCheckInTime() != null) {
-            Duration duration = Duration.between(attendance.getCheckInTime(), checkOutTime);
-            double hoursWorked = duration.toMinutes() / 60.0;
-            attendance.setHoursWorked(hoursWorked);
-            
-            // Calcular salario diario
-            BigDecimal dailySalary = calculateDailySalary(attendance);
-            attendance.setDailySalary(dailySalary);
+        Employee employee = attendance.getEmployee();
+        WorkSchedule workSchedule = employee.getWorkSchedule();
+        if (workSchedule != null && checkOutTime.isBefore(workSchedule.getEndTime())) {
+            attendance.setStatus(AttendanceStatus.ABSENT);
+            attendance.setHoursWorked(0.0);
+            attendance.setDailySalary(BigDecimal.ZERO);
+            attendance.setComments("Salida antes del horario programado - Falta");
+        } else {
+            if (attendance.getCheckInTime() != null) {
+                Duration duration = Duration.between(attendance.getCheckInTime(), checkOutTime);
+                double hoursWorked = (double) duration.toHours(); // Solo horas completas
+                attendance.setHoursWorked(hoursWorked);
+                BigDecimal dailySalary = calculateDailySalary(attendance);
+                attendance.setDailySalary(dailySalary);
+            }
         }
 
         attendance = attendanceRepository.save(attendance);
         log.info("Check-out registrado para empleado: {} a las {}", 
                 attendance.getEmployee().getEmployeeKey(), checkOutTime);
+
 
         return mapToResponseDto(attendance);
     }
@@ -117,10 +126,6 @@ public class AttendanceServiceImpl implements AttendanceService {
                                  workSchedule.getToleranceMinutes() : 0;
         
         LocalTime lateThreshold = scheduledStart.plusMinutes(toleranceMinutes);
-        // Nueva regla:
-        // - Si check-in > (hora entrada + tolerancia) => ABSENT (falta)
-        // - Si check-in > hora entrada y <= (hora entrada + tolerancia) => LATE (retardo)
-        // - Si check-in <= hora de entrada => PRESENT
         if (checkInTime.isAfter(lateThreshold)) {
             return AttendanceStatus.ABSENT;
         } else if (checkInTime.isAfter(scheduledStart)) {
@@ -138,22 +143,31 @@ public class AttendanceServiceImpl implements AttendanceService {
             return BigDecimal.ZERO;
         }
 
-        // Solo contar horas enteras para el pago
         int hoursForPayment = (int) Math.floor(attendance.getHoursWorked());
         BigDecimal baseSalary = employee.getHourlyRate()
                 .multiply(BigDecimal.valueOf(hoursForPayment));
 
-        // Verificar si es día festivo (pago x2)
         Optional<Holiday> holiday = holidayRepository.findByDate(date);
         if (holiday.isPresent()) {
-            return baseSalary.multiply(BigDecimal.valueOf(2));
+            return baseSalary.multiply(BigDecimal.valueOf(3));
         }
 
-        // Verificar si está en vacaciones (pago x3)
         Optional<Leave> vacationLeave = leaveRepository.findByEmployeeAndDateBetweenStartAndEndDate(
                 employee, date);
         if (vacationLeave.isPresent()) {
             return baseSalary.multiply(BigDecimal.valueOf(3));
+        }
+
+        if (attendance.getStatus() == AttendanceStatus.LATE) {
+            Optional<PayrollConfig> configOpt = payrollConfigRepository.findByIsActiveTrue();
+            if (configOpt.isPresent()) {
+                PayrollConfig config = configOpt.get();
+                BigDecimal penalty = config.getLatePenalty();
+                if (penalty != null && penalty.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal finalSalary = baseSalary.subtract(penalty);
+                    return finalSalary.compareTo(BigDecimal.ZERO) < 0 ? BigDecimal.ZERO : finalSalary;
+                }
+            }
         }
 
         return baseSalary;
@@ -171,12 +185,27 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .toList();
     }
 
+    @Override
+    @Transactional
+    public Page<AttendanceResponseDto> getEmployeeAttendancePaginated(Long employeeId, int page, int size) {
+        Employee employee = employeeRepository.findById(employeeId)
+                .orElseThrow(() -> new BusinessException("EMPLOYEE_NOT_FOUND", "Empleado no encontrado con ID: " + employeeId));
+        
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(30);
+        ensureAttendanceRange(employee, startDate, endDate);
+        
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
+        Page<Attendance> attendancePage = attendanceRepository.findByEmployee(employee, pageable);
+        
+        return attendancePage.map(this::mapToResponseDto);
+    }
+
         @Override
         @Transactional
         public List<AttendanceResponseDto> getEmployeeAttendanceByDateRange(Long employeeId, LocalDate startDate, LocalDate endDate) {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new BusinessException("EMPLOYEE_NOT_FOUND", "Empleado no encontrado con ID: " + employeeId));
-        // On-demand: asegurar registros por día en el rango
         ensureAttendanceRange(employee, startDate, endDate);
 
         List<Attendance> attendances = attendanceRepository.findByEmployeeAndDateBetweenOrderByDateDesc(
@@ -227,21 +256,34 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     private Attendance ensureAttendanceForDate(Employee employee, LocalDate date) {
-        Optional<Attendance> existing = attendanceRepository.findByEmployeeAndDate(employee, date);
-        if (existing.isPresent()) return existing.get();
-
-        // Si existe un permiso/vacación aprobado para ese día, registrar acorde
-        Optional<Leave> approvedLeave = leaveRepository.findByEmployeeAndDateBetweenStartAndEndDate(employee, date);
+        List<Attendance> existing = attendanceRepository.findByEmployeeAndDate(employee, date);
+        if (!existing.isEmpty()) return existing.get(0);
 
         Attendance newAttendance = new Attendance();
         newAttendance.setEmployee(employee);
         newAttendance.setDate(date);
 
+        if (date.getDayOfWeek().getValue() == 7) {
+            newAttendance.setStatus(AttendanceStatus.NON_WORKING_DAY);
+            newAttendance.setDailySalary(BigDecimal.ZERO);
+            newAttendance.setComments("Día no laboral - Domingo");
+            return attendanceRepository.save(newAttendance);
+        }
+
+        Optional<Holiday> holiday = holidayRepository.findByDate(date);
+        if (holiday.isPresent()) {
+            newAttendance.setStatus(AttendanceStatus.HOLIDAY);
+            newAttendance.setDailySalary(BigDecimal.ZERO);
+            newAttendance.setComments("Día festivo - " + holiday.get().getName());
+            return attendanceRepository.save(newAttendance);
+        }
+
+        Optional<Leave> approvedLeave = leaveRepository.findByEmployeeAndDateBetweenStartAndEndDate(employee, date);
+
         if (approvedLeave.isPresent()) {
             Leave leave = approvedLeave.get();
             if (leave.getLeaveRequest().getType() == LeaveType.VACATION) {
                 newAttendance.setStatus(AttendanceStatus.VACATION);
-                // Pago de vacaciones por día: (horas/día * salario/hora) * 3
                 WorkSchedule ws = employee.getWorkSchedule();
                 Integer hoursPerDay = ws != null && ws.getTotalHoursPerDay() != null ? ws.getTotalHoursPerDay() : 0;
                 if (employee.getHourlyRate() != null && hoursPerDay > 0) {
@@ -251,14 +293,19 @@ public class AttendanceServiceImpl implements AttendanceService {
                     newAttendance.setDailySalary(dailySalary);
                 }
             } else {
-                // Permisos (personal, enfermedad): no pagan pero no afectan
                 newAttendance.setStatus(AttendanceStatus.JUSTIFIED_ABSENCE);
-                newAttendance.setDailySalary(BigDecimal.ZERO);
+                WorkSchedule ws = employee.getWorkSchedule();
+                Integer hoursPerDay = ws != null && ws.getTotalHoursPerDay() != null ? ws.getTotalHoursPerDay() : 0;
+                if (employee.getHourlyRate() != null && hoursPerDay > 0) {
+                    BigDecimal dailySalary = employee.getHourlyRate()
+                            .multiply(BigDecimal.valueOf(hoursPerDay))
+                            .multiply(BigDecimal.valueOf(3));
+                    newAttendance.setDailySalary(dailySalary);
+                }
             }
             return attendanceRepository.save(newAttendance);
         }
 
-        // Si no hay permiso/vacaciones aprobadas: marcar como falta
         newAttendance.setStatus(AttendanceStatus.ABSENT);
         newAttendance.setDailySalary(BigDecimal.ZERO);
         return attendanceRepository.save(newAttendance);

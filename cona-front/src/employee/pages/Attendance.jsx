@@ -17,13 +17,19 @@ export default function AttendancePage() {
   const [stats, setStats] = useState({ totalDays: 0, presentDays: 0, lateDays: 0, absentDays: 0 })
   const [loading, setLoading] = useState(true)
   const [effectiveEmployeeId, setEffectiveEmployeeId] = useState(null)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+  const pageSize = 15
 
   const statusLabels = {
     'PRESENT': 'A tiempo',
     'LATE': 'Retardo', 
     'ABSENT': 'Falta',
     'JUSTIFIED_ABSENCE': 'Justificado',
-    'VACATION': 'Vacaciones'
+    'VACATION': 'Vacaciones',
+    'NON_WORKING_DAY': 'Día no laboral',
+    'HOLIDAY': 'Día festivo'
   }
 
   const statusVariants = {
@@ -31,50 +37,98 @@ export default function AttendancePage() {
     'LATE': 'destructive',
     'ABSENT': 'destructive', 
     'JUSTIFIED_ABSENCE': 'secondary',
-    'VACATION': 'outline'
+    'VACATION': 'outline',
+    'NON_WORKING_DAY': 'secondary',
+    'HOLIDAY': 'default'
   }
 
   useEffect(() => {
     const init = async () => {
-      if (!user) return
+      if (!user) {
+        console.log('No user found')
+        return
+      }
+      
+      console.log('Current user:', user)
+      
       // Si ya viene employeeId desde el token/usuario, úsalo
       if (user.employeeId) {
+        console.log('Using employeeId from user token:', user.employeeId)
         setEffectiveEmployeeId(user.employeeId)
         await loadAttendanceData(user.employeeId)
         return
       }
+      
       // De lo contrario, obtén el empleado por userId
       try {
+        console.log('Fetching employee by userId:', user.id)
         const res = await employeeService.getByUserId(user.id)
+        console.log('Employee service response:', res)
+        
         if (res?.success && res.data?.id) {
+          console.log('Found employee ID:', res.data.id)
           setEffectiveEmployeeId(res.data.id)
           await loadAttendanceData(res.data.id)
+        } else {
+          console.error('No employee found for user:', user.id)
+          alertConfig.error('No se encontró un empleado asociado a este usuario')
         }
       } catch (e) {
-        // opcional: alerta silenciosa
+        console.error('Error fetching employee:', e)
+        alertConfig.error('Error al buscar información del empleado: ' + e.message)
       }
     }
     init()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user])
 
-  const loadAttendanceData = async (empIdParam) => {
+  const loadAttendanceData = async (empIdParam, page = 0) => {
     const empId = empIdParam ?? effectiveEmployeeId ?? user?.employeeId
     if (!empId) return
 
     setLoading(true)
     try {
-      // Obtener los últimos 30 días
+      // Obtener los últimos 30 días para estadísticas
       const endDate = new Date().toISOString().split('T')[0]
       const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-      const [attendanceResult, statsResult] = await Promise.all([
-        attendanceService.getEmployeeAttendanceRange(empId, startDate, endDate),
-        attendanceService.getEmployeeStats(empId, startDate, endDate)
-      ])
+      let attendanceResult
+      try {
+        console.log('Attempting to load attendance for employee:', empId, 'page:', page)
+        // Intentar primero con paginado
+        attendanceResult = await attendanceService.getEmployeeAttendancePaginated(empId, page, pageSize)
+        console.log('Paginated result:', attendanceResult)
+      } catch (error) {
+        console.warn('Paginado falló, usando endpoint por rango. Error:', error.message)
+        // Fallback al endpoint por rango
+        try {
+          attendanceResult = await attendanceService.getEmployeeAttendanceRange(empId, startDate, endDate)
+          console.log('Range result:', attendanceResult)
+          // Simular paginación manual
+          const allData = attendanceResult.data || []
+          const startIndex = page * pageSize
+          const endIndex = startIndex + pageSize
+          const paginatedData = allData.slice(startIndex, endIndex)
+          
+          attendanceResult.data = {
+            content: paginatedData,
+            totalPages: Math.ceil(allData.length / pageSize),
+            totalElements: allData.length,
+            number: page
+          }
+        } catch (rangeError) {
+          console.error('Range endpoint also failed:', rangeError)
+          throw new Error(`No se pudo cargar la asistencia: ${rangeError.message}`)
+        }
+      }
+
+      const statsResult = await attendanceService.getEmployeeStats(empId, startDate, endDate)
 
       if (attendanceResult.success) {
-        setAttendance(attendanceResult.data)
+        setAttendance(attendanceResult.data.content || [])
+        setTotalPages(attendanceResult.data.totalPages || 0)
+        setTotalElements(attendanceResult.data.totalElements || 0)
+        setCurrentPage(page)
       } else {
         alertConfig.error(attendanceResult.message)
       }
@@ -89,7 +143,14 @@ export default function AttendancePage() {
     }
   }
 
+  const handlePageChange = (newPage) => {
+    if (newPage >= 0 && newPage < totalPages) {
+      loadAttendanceData(null, newPage)
+    }
+  }
+
   const filtered = attendance.filter((r) => {
+    if (!searchTerm) return true
     const dateStr = typeof r.date === 'string' ? r.date : String(r.date ?? '')
     return dateStr.toLowerCase().includes(searchTerm.toLowerCase())
   })
@@ -98,10 +159,26 @@ export default function AttendancePage() {
     <div className="p-8 space-y-6 min-h-screen">
       <div>
         <h1 className="text-3xl font-bold text-balance">Mi Asistencia</h1>
-        <p className="text-muted-foreground">Historial completo de registros</p>
+        <p className="text-muted-foreground">
+          Historial completo de registros
+          {effectiveEmployeeId && <span> (Empleado ID: {effectiveEmployeeId})</span>}
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {!effectiveEmployeeId && (
+        <Card>
+          <CardContent className="py-8">
+            <div className="text-center text-muted-foreground">
+              <p>No se pudo identificar su información de empleado.</p>
+              <p className="text-sm mt-2">Por favor, contacte al administrador del sistema.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {effectiveEmployeeId && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Total Días</CardTitle>
@@ -141,7 +218,10 @@ export default function AttendancePage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Registros de Asistencia</CardTitle>
-              <CardDescription>Últimos 30 días</CardDescription>
+              <CardDescription>
+                {totalElements > 0 ? `${totalElements} registros encontrados` : 'Historial completo'}
+                {currentPage < totalPages - 1 && ` (Página ${currentPage + 1} de ${totalPages})`}
+              </CardDescription>
             </div>
             <div className="flex items-center gap-2">
               <Input
@@ -190,7 +270,9 @@ export default function AttendancePage() {
                     <TableCell>{record.checkOutTime || '-'}</TableCell>
                     <TableCell>
                       {record.hoursWorked 
-                        ? `${Math.floor(record.hoursWorked)}h ${Math.round((record.hoursWorked % 1) * 60)}m`
+                        ? record.hoursWorked % 1 === 0 
+                          ? `${Math.floor(record.hoursWorked)}h`
+                          : `${Math.floor(record.hoursWorked)}h ${Math.round((record.hoursWorked % 1) * 60)}m`
                         : '-'
                       }
                     </TableCell>
@@ -200,7 +282,9 @@ export default function AttendancePage() {
                             const val = typeof record.dailySalary === 'number' 
                               ? record.dailySalary 
                               : parseFloat(record.dailySalary)
-                            return isNaN(val) ? '-' : `$${val.toLocaleString()}`
+                            if (isNaN(val) || val === 0) return '-'
+                            // Formatear sin decimales si es un número entero
+                            return `$${val % 1 === 0 ? val.toLocaleString() : val.toFixed(2)}`
                           })()
                         : '-'}
                     </TableCell>
@@ -229,8 +313,40 @@ export default function AttendancePage() {
             </TableBody>
           </Table>
           </div>
+          
+          {/* Controles de paginación */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between mt-4 pt-4 border-t">
+              <div className="text-sm text-muted-foreground">
+                Mostrando {(currentPage * pageSize) + 1} - {Math.min((currentPage + 1) * pageSize, totalElements)} de {totalElements} registros
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 0}
+                >
+                  Anterior
+                </Button>
+                <span className="text-sm px-3 py-1 bg-muted rounded">
+                  {currentPage + 1} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages - 1}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   )
 }

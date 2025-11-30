@@ -5,9 +5,14 @@ import com.cona.modules.attendance.enums.AttendanceStatus;
 import com.cona.modules.attendance.repository.AttendanceRepository;
 import com.cona.modules.employees.entity.Employee;
 import com.cona.modules.employees.repository.EmployeeRepository;
+import com.cona.modules.leaves.entity.Leave;
 import com.cona.modules.leaves.entity.LeaveRequest;
 import com.cona.modules.leaves.enums.LeaveStatus;
+import com.cona.modules.leaves.enums.LeaveType;
+import com.cona.modules.leaves.repository.LeaveRepository;
 import com.cona.modules.leaves.repository.LeaveRequestRepository;
+import com.cona.modules.system_config.entity.Holiday;
+import com.cona.modules.system_config.repository.HolidayRepository;
 import com.cona.modules.payroll.dto.PayrollDetailDto;
 import com.cona.modules.payroll.entity.Payroll;
 import com.cona.modules.payroll.enums.PayrollStatus;
@@ -26,6 +31,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -38,6 +44,8 @@ public class PayrollService {
     private final AttendanceRepository attendanceRepository;
     private final EmployeeRepository employeeRepository;
     private final LeaveRequestRepository leaveRequestRepository;
+    private final LeaveRepository leaveRepository;
+    private final HolidayRepository holidayRepository;
     private final PayrollConfigRepository payrollConfigRepository;
 
     @Transactional
@@ -49,6 +57,9 @@ public class PayrollService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("PayrollConfig not found"));
 
+        // ASEGURAR que todos los días tengan registro ANTES de consultar
+        ensureAllDaysHaveAttendanceForEmployee(employee, periodStart, periodEnd);
+
         // Obtener todas las asistencias del empleado en el período (últimos 15 días)
         List<Attendance> attendances = attendanceRepository
                 .findByEmployeeIdAndDateBetweenOrderByDateDesc(employeeId, periodStart, periodEnd);
@@ -56,7 +67,7 @@ public class PayrollService {
         log.info("Found {} attendances for employee {} between {} and {}", 
                 attendances.size(), employeeId, periodStart, periodEnd);
 
-        // Crear registros de falta para días sin asistencia registrada
+        // Crear registros de falta para días sin asistencia registrada (método legacy)
         attendances = ensureAllDaysHaveAttendance(employeeId, periodStart, periodEnd, attendances);
 
         // Procesar asistencias y actualizar estados según vacaciones aprobadas
@@ -65,15 +76,26 @@ public class PayrollService {
         // Calcular los diferentes tipos de días y salarios
         PayrollCalculation calculation = calculatePayrollDetails(attendances, employee, config);
 
-        // Crear o actualizar el registro de nómina
-        Payroll payroll = payrollRepository
-                .findByEmployeeIdAndPeriod(employeeId, periodStart, periodEnd)
-                .orElse(Payroll.builder()
-                        .employee(employee)
-                        .periodStart(periodStart)
-                        .periodEnd(periodEnd)
-                        .status(PayrollStatus.DRAFT)
-                        .build());
+        // Crear o actualizar el registro de nómina (tolerante a duplicados)
+        List<Payroll> existingPayrolls = payrollRepository
+            .findAllByEmployeeIdAndPeriod(employeeId, periodStart, periodEnd);
+
+        Payroll payroll;
+        if (existingPayrolls.isEmpty()) {
+            payroll = Payroll.builder()
+                .employee(employee)
+                .periodStart(periodStart)
+                .periodEnd(periodEnd)
+                .status(PayrollStatus.DRAFT)
+                .build();
+        } else {
+            // Usar el primero y registrar si hay duplicados
+            payroll = existingPayrolls.get(0);
+            if (existingPayrolls.size() > 1) {
+            log.warn("Detected {} duplicate payrolls for employee {} period {} - {}. Using the first one.",
+                existingPayrolls.size(), employeeId, periodStart, periodEnd);
+            }
+        }
 
         // Asignar valores calculados
         payroll.setNormalDaysWorked(calculation.normalDaysWorked);
@@ -87,10 +109,14 @@ public class PayrollService {
         payroll.setLatePenaltyDeduction(calculation.latePenaltyDeduction);
         payroll.setBaseSalary(calculation.baseSalary);
         payroll.setBonus(calculation.bonus);
+        payroll.setIsrDeduction(calculation.isrDeduction);
+        payroll.setImssDeduction(calculation.imssDeduction);
+        payroll.setTotalDeductions(calculation.totalDeductions);
         payroll.setTotalSalary(calculation.totalSalary);
         payroll.setHasBonusPenalties(calculation.hasBonusPenalties);
 
         // Campos de compatibilidad
+        payroll.setDeductions(calculation.totalDeductions);
         payroll.setNetSalary(calculation.totalSalary);
         payroll.setBonuses(calculation.bonus);
 
@@ -180,19 +206,37 @@ public class PayrollService {
                     calc.hasBonusPenalties = true;
                     log.info("Found LATE day: {}", attendance.getDate());
                     
-                    // Calcular salario con descuento por retardo
-                    BigDecimal dailySalary = calculateDailySalary(attendance, employee);
+                    // Para días con retardo, aplicar descuento directamente al salario del día
+                    BigDecimal dailySalary;
+                    if (attendance.getDailySalary() != null) {
+                        dailySalary = attendance.getDailySalary();
+                    } else {
+                        dailySalary = calculateDailySalary(attendance, employee);
+                    }
+                    
+                    // Aplicar descuento por retardo directamente al salario del día
                     BigDecimal penalty = config.getLatePenalty();
                     BigDecimal salaryAfterPenalty = dailySalary.subtract(penalty);
-                    
                     calc.lateDaysSalary = calc.lateDaysSalary.add(salaryAfterPenalty);
+                    
+                    // Registrar el total de penalizaciones aplicadas (para mostrar en el DTO)
                     calc.latePenaltyDeduction = calc.latePenaltyDeduction.add(penalty);
+                    
+                    log.info("Late day salary: {} - penalty: {} = {}", dailySalary, penalty, salaryAfterPenalty);
                     break;
                     
                 case JUSTIFIED_ABSENCE:
-                    // Las ausencias justificadas no afectan el bono pero tampoco generan salario
-                    // No se cuentan como faltas para el bono
+                    // Las ausencias justificadas con permisos aprobados pagan x3
+                    if (attendance.getDailySalary() != null) {
+                        calc.normalDaysSalary = calc.normalDaysSalary.add(attendance.getDailySalary());
+                    }
                     log.info("Found JUSTIFIED_ABSENCE day: {}", attendance.getDate());
+                    break;
+                    
+                case NON_WORKING_DAY:
+                case HOLIDAY:
+                    // Días no laborales y festivos no afectan cálculos
+                    log.info("Found NON_WORKING_DAY/HOLIDAY: {}", attendance.getDate());
                     break;
             }
         }
@@ -212,8 +256,16 @@ public class PayrollService {
             calc.bonus = config.getBonusAmount();
         }
         
-        // Calcular salario total
-        calc.totalSalary = calc.baseSalary.add(calc.bonus);
+        // Calcular salario bruto (base + bono)
+        BigDecimal grossSalary = calc.baseSalary.add(calc.bonus);
+        
+        // Calcular descuentos ISR e IMSS (las penalizaciones por retardo ya se aplicaron directamente)
+        calc.isrDeduction = config.getIsrFixed();
+        calc.imssDeduction = config.getImssFixed();
+        calc.totalDeductions = calc.isrDeduction.add(calc.imssDeduction);
+        
+        // Calcular salario neto (bruto - descuentos)
+        calc.totalSalary = grossSalary.subtract(calc.totalDeductions);
         
         return calc;
     }
@@ -249,10 +301,10 @@ public class PayrollService {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
         
-        // Crear registros de falta para días sin asistencia (excluyendo fines de semana)
+        // Crear registros para todos los días (incluyendo domingos como no laborales)
         for (LocalDate date : allDates) {
-            // Saltar sábados y domingos
-            if (date.getDayOfWeek().getValue() == 6 || date.getDayOfWeek().getValue() == 7) {
+            // Saltar solo sábados
+            if (date.getDayOfWeek().getValue() == 6) {
                 continue;
             }
             
@@ -289,9 +341,15 @@ public class PayrollService {
     }
 
     public PayrollDetailDto getPayrollDetail(Long employeeId, LocalDate periodStart, LocalDate periodEnd) {
-        Payroll payroll = payrollRepository
-                .findByEmployeeIdAndPeriod(employeeId, periodStart, periodEnd)
-                .orElseThrow(() -> new RuntimeException("Payroll not found for the specified period"));
+        List<Payroll> payrolls = payrollRepository.findAllByEmployeeIdAndPeriod(employeeId, periodStart, periodEnd);
+        if (payrolls.isEmpty()) {
+            throw new RuntimeException("Payroll not found for the specified period");
+        }
+        if (payrolls.size() > 1) {
+            log.warn("Detected {} duplicate payrolls for employee {} period {} - {}. Returning the first.",
+                    payrolls.size(), employeeId, periodStart, periodEnd);
+        }
+        Payroll payroll = payrolls.get(0);
 
         Employee employee = payroll.getEmployee();
 
@@ -310,6 +368,9 @@ public class PayrollService {
                 .lateDays(payroll.getLateDays())
                 .lateDaysSalary(payroll.getLateDaysSalary())
                 .latePenaltyDeduction(payroll.getLatePenaltyDeduction())
+                .isrDeduction(payroll.getIsrDeduction())
+                .imssDeduction(payroll.getImssDeduction())
+                .totalDeductions(payroll.getTotalDeductions())
                 .bonus(payroll.getBonus())
                 .hasBonusPenalties(payroll.getHasBonusPenalties())
                 .baseSalary(payroll.getBaseSalary())
@@ -319,6 +380,89 @@ public class PayrollService {
 
     public List<Payroll> getEmployeePayrolls(Long employeeId) {
         return payrollRepository.findByEmployeeId(employeeId);
+    }
+
+
+    private void ensureAllDaysHaveAttendanceForEmployee(Employee employee, LocalDate startDate, LocalDate endDate) {
+        LocalDate currentDate = startDate;
+        while (!currentDate.isAfter(endDate)) {
+            // Saltar solo sábados
+            if (currentDate.getDayOfWeek().getValue() != 6) {
+                ensureAttendanceRecordExists(employee, currentDate);
+            }
+            currentDate = currentDate.plusDays(1);
+        }
+    }
+
+    private void ensureAttendanceRecordExists(Employee employee, LocalDate date) {
+        // Verificar si ya existe registro para esta fecha
+        List<Attendance> existing = attendanceRepository.findByEmployeeAndDate(employee, date);
+        if (!existing.isEmpty()) {
+            return; // Ya existe, no hacer nada
+        }
+
+        // Crear nuevo registro
+        Attendance newAttendance = new Attendance();
+        newAttendance.setEmployee(employee);
+        newAttendance.setDate(date);
+
+        // Verificar si es domingo (día no laboral)
+        if (date.getDayOfWeek().getValue() == 7) {
+            newAttendance.setStatus(AttendanceStatus.NON_WORKING_DAY);
+            newAttendance.setDailySalary(BigDecimal.ZERO);
+            newAttendance.setComments("Día no laboral - Domingo");
+            attendanceRepository.save(newAttendance);
+            return;
+        }
+
+        // Verificar si es día festivo
+        Optional<Holiday> holiday = holidayRepository.findByDate(date);
+        if (holiday.isPresent()) {
+            newAttendance.setStatus(AttendanceStatus.HOLIDAY);
+            newAttendance.setDailySalary(BigDecimal.ZERO);
+            newAttendance.setComments("Día festivo - " + holiday.get().getName());
+            attendanceRepository.save(newAttendance);
+            return;
+        }
+
+        // Verificar si existe un permiso/vacación aprobado para ese día
+        Optional<Leave> approvedLeave = leaveRepository.findByEmployeeAndDateBetweenStartAndEndDate(employee, date);
+        if (approvedLeave.isPresent()) {
+            Leave leave = approvedLeave.get();
+            if (leave.getLeaveRequest().getType() == LeaveType.VACATION) {
+                newAttendance.setStatus(AttendanceStatus.VACATION);
+                // Pago de vacaciones: (horas/día * salario/hora) * 3
+                WorkSchedule ws = employee.getWorkSchedule();
+                Integer hoursPerDay = ws != null && ws.getTotalHoursPerDay() != null ? ws.getTotalHoursPerDay() : 0;
+                if (employee.getHourlyRate() != null && hoursPerDay > 0) {
+                    BigDecimal dailySalary = employee.getHourlyRate()
+                            .multiply(BigDecimal.valueOf(hoursPerDay))
+                            .multiply(BigDecimal.valueOf(3));
+                    newAttendance.setDailySalary(dailySalary);
+                }
+                newAttendance.setComments("Vacaciones aprobadas");
+            } else {
+                // Permisos: pago x3
+                newAttendance.setStatus(AttendanceStatus.JUSTIFIED_ABSENCE);
+                WorkSchedule ws = employee.getWorkSchedule();
+                Integer hoursPerDay = ws != null && ws.getTotalHoursPerDay() != null ? ws.getTotalHoursPerDay() : 0;
+                if (employee.getHourlyRate() != null && hoursPerDay > 0) {
+                    BigDecimal dailySalary = employee.getHourlyRate()
+                            .multiply(BigDecimal.valueOf(hoursPerDay))
+                            .multiply(BigDecimal.valueOf(3));
+                    newAttendance.setDailySalary(dailySalary);
+                }
+                newAttendance.setComments("Permiso aprobado");
+            }
+            attendanceRepository.save(newAttendance);
+            return;
+        }
+
+        // Si no hay permisos/vacaciones: marcar como falta
+        newAttendance.setStatus(AttendanceStatus.ABSENT);
+        newAttendance.setDailySalary(BigDecimal.ZERO);
+        newAttendance.setComments("Falta generada automáticamente para cálculo de nómina");
+        attendanceRepository.save(newAttendance);
     }
 
     // Clase interna para cálculos
@@ -334,6 +478,9 @@ public class PayrollService {
         BigDecimal latePenaltyDeduction = BigDecimal.ZERO;
         BigDecimal baseSalary = BigDecimal.ZERO;
         BigDecimal bonus = BigDecimal.ZERO;
+        BigDecimal isrDeduction = BigDecimal.ZERO;
+        BigDecimal imssDeduction = BigDecimal.ZERO;
+        BigDecimal totalDeductions = BigDecimal.ZERO;
         BigDecimal totalSalary = BigDecimal.ZERO;
         Boolean hasBonusPenalties = false;
     }

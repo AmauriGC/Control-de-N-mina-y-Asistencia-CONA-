@@ -30,6 +30,9 @@ public class PayrollDetailDto {
     
     // Descuentos y bonos
     private BigDecimal latePenaltyDeduction;
+    private BigDecimal isrDeduction;
+    private BigDecimal imssDeduction;
+    private BigDecimal totalDeductions;
     private BigDecimal bonus;
     private Boolean hasBonusPenalties;
     

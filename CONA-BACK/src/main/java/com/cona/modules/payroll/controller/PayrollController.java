@@ -9,95 +9,176 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/payroll")
+@RequestMapping("/payroll")
 @RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class PayrollController {
 
     private final PayrollService payrollService;
 
+    private LocalDate[] calculateLastCompleteBiweeklyPeriod() {
+        LocalDate today = LocalDate.now();
+        
+        LocalDate currentMonday = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        
+        LocalDate referenceDate = LocalDate.of(2024, 1, 1); // Un lunes de referencia
+        
+        long weeksSinceReference = ChronoUnit.WEEKS.between(referenceDate, currentMonday);
+        
+        long biweeklyPeriods = weeksSinceReference / 2;
+        
+        LocalDate lastPeriodStart = referenceDate.plusWeeks((biweeklyPeriods - 1) * 2);
+        LocalDate lastPeriodEnd = lastPeriodStart.plusDays(13); // 14 días (2 semanas) - 1 día para incluir domingo
+        
+        return new LocalDate[]{lastPeriodStart, lastPeriodEnd};
+    }
+
     @PostMapping("/calculate/{employeeId}")
-    public ResponseEntity<ApiResponse<Payroll>> calculatePayroll(
+    public ApiResponse<Payroll> calculatePayroll(
             @PathVariable Long employeeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate periodStart,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate periodEnd) {
-        
-        try {
-            Payroll payroll = payrollService.calculatePayroll(employeeId, periodStart, periodEnd);
-            return ResponseEntity.ok(ApiResponse.success("Nómina calculada exitosamente", payroll));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al calcular nómina: " + e.getMessage()));
-        }
+        Payroll payroll = payrollService.calculatePayroll(employeeId, periodStart, periodEnd);
+        return ApiResponse.success("Nómina calculada exitosamente", payroll);
     }
 
     @GetMapping("/detail/{employeeId}")
-    public ResponseEntity<ApiResponse<PayrollDetailDto>> getPayrollDetail(
+    public ApiResponse<PayrollDetailDto> getPayrollDetail(
             @PathVariable Long employeeId,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate periodStart,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate periodEnd) {
-        
-        try {
-            PayrollDetailDto detail = payrollService.getPayrollDetail(employeeId, periodStart, periodEnd);
-            return ResponseEntity.ok(ApiResponse.success("Detalle de nómina obtenido", detail));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al obtener detalle: " + e.getMessage()));
-        }
+        PayrollDetailDto detail = payrollService.getPayrollDetail(employeeId, periodStart, periodEnd);
+        return ApiResponse.success("Detalle de nómina obtenido", detail);
     }
 
     @GetMapping("/employee/{employeeId}")
-    public ResponseEntity<ApiResponse<List<Payroll>>> getEmployeePayrolls(@PathVariable Long employeeId) {
-        try {
-            List<Payroll> payrolls = payrollService.getEmployeePayrolls(employeeId);
-            return ResponseEntity.ok(ApiResponse.success("Nóminas del empleado obtenidas", payrolls));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al obtener nóminas: " + e.getMessage()));
-        }
+    public ApiResponse<List<Payroll>> getEmployeePayrolls(@PathVariable Long employeeId) {
+        List<Payroll> payrolls = payrollService.getEmployeePayrolls(employeeId);
+        return ApiResponse.success("Nóminas del empleado obtenidas", payrolls);
     }
 
     @GetMapping("/employee/{employeeId}/latest")
-    public ResponseEntity<ApiResponse<PayrollDetailDto>> getLatestPayroll(@PathVariable Long employeeId) {
-        try {
-            // Calcular nómina para los últimos 15 días desde hoy
-            LocalDate endDate = LocalDate.now();
-            LocalDate startDate = endDate.minusDays(14); // 15 días incluyendo hoy
-            
-            System.out.println("Calculating payroll for employee " + employeeId + " from " + startDate + " to " + endDate);
-            
-            // Calcular la nómina
-            payrollService.calculatePayroll(employeeId, startDate, endDate);
-            
-            // Obtener el detalle
-            PayrollDetailDto detail = payrollService.getPayrollDetail(employeeId, startDate, endDate);
-            
-            System.out.println("Payroll detail: " + detail);
-            
-            return ResponseEntity.ok(ApiResponse.success("Última nómina calculada", detail));
-            
-        } catch (Exception e) {
-            e.printStackTrace(); // Para debug
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al obtener última nómina: " + e.getMessage()));
+    public ApiResponse<PayrollDetailDto> getLatestPayroll(@PathVariable Long employeeId) {
+        LocalDate[] period = calculateLastCompleteBiweeklyPeriod();
+        LocalDate startDate = period[0];
+        LocalDate endDate = period[1];
+
+        payrollService.calculatePayroll(employeeId, startDate, endDate);
+        PayrollDetailDto detail = payrollService.getPayrollDetail(employeeId, startDate, endDate);
+        return ApiResponse.success("Última nómina completa calculada", detail);
+    }
+
+    @GetMapping("/employee/{employeeId}/latest/pdf")
+    public ResponseEntity<byte[]> downloadLatestPayrollPdf(@PathVariable Long employeeId) {
+        LocalDate[] period = calculateLastCompleteBiweeklyPeriod();
+        LocalDate startDate = period[0];
+        LocalDate endDate = period[1];
+        PayrollDetailDto detail = payrollService.getPayrollDetail(employeeId, startDate, endDate);
+
+        byte[] pdfBytes = PayrollPdfGenerator.generate(detail);
+        String fileName = String.format("nomina_%s_a_%s.pdf", startDate.toString(), endDate.toString());
+
+        return ResponseEntity.ok()
+                .header("Content-Type", "application/pdf")
+                .header("Content-Disposition", "attachment; filename=" + fileName)
+                .body(pdfBytes);
+    }
+
+    class PayrollPdfGenerator {
+        static byte[] generate(PayrollDetailDto d) {
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            com.lowagie.text.Document document = new com.lowagie.text.Document(com.lowagie.text.PageSize.A4);
+            try {
+                com.lowagie.text.pdf.PdfWriter.getInstance(document, baos);
+                document.open();
+
+                com.lowagie.text.Font titleFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 16);
+                com.lowagie.text.Font sectionFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA_BOLD, 12);
+                com.lowagie.text.Font normalFont = com.lowagie.text.FontFactory.getFont(com.lowagie.text.FontFactory.HELVETICA, 11);
+
+                // Title
+                com.lowagie.text.Paragraph title = new com.lowagie.text.Paragraph("Recibo de Nómina", titleFont);
+                title.setAlignment(com.lowagie.text.Element.ALIGN_CENTER);
+                title.setSpacingAfter(12f);
+                document.add(title);
+
+                // Period
+                com.lowagie.text.Paragraph period = new com.lowagie.text.Paragraph(
+                        String.format("Periodo: %s a %s", d.getPeriodStart(), d.getPeriodEnd()), normalFont);
+                period.setSpacingAfter(10f);
+                document.add(period);
+
+                // Summary Table
+                com.lowagie.text.pdf.PdfPTable table = new com.lowagie.text.pdf.PdfPTable(2);
+                table.setWidthPercentage(100);
+                table.setSpacingBefore(8f);
+                table.setSpacingAfter(8f);
+                addRow(table, "Días Laborados", String.valueOf(d.getNormalDaysWorked()), sectionFont, normalFont);
+                addRow(table, "Retardos", String.valueOf(d.getLateDays()), sectionFont, normalFont);
+                addRow(table, "Faltas", String.valueOf(d.getAbsentDays()), sectionFont, normalFont);
+                addRow(table, "Vacaciones", String.valueOf(d.getVacationDays()), sectionFont, normalFont);
+                document.add(table);
+
+                // Amounts
+                java.util.Locale mx = new java.util.Locale("es", "MX");
+                java.text.NumberFormat cf = java.text.NumberFormat.getCurrencyInstance(mx);
+
+                com.lowagie.text.Paragraph amountsHeader = new com.lowagie.text.Paragraph("Importes", sectionFont);
+                amountsHeader.setSpacingBefore(4f);
+                amountsHeader.setSpacingAfter(6f);
+                document.add(amountsHeader);
+
+                com.lowagie.text.pdf.PdfPTable amounts = new com.lowagie.text.pdf.PdfPTable(2);
+                amounts.setWidthPercentage(100);
+                java.math.BigDecimal percepciones = d.getBaseSalary().add(d.getBonus() != null ? d.getBonus() : java.math.BigDecimal.ZERO);
+                addRow(amounts, "Sueldo Base", cf.format(d.getBaseSalary()), normalFont, normalFont);
+                addRow(amounts, "Bono", cf.format(d.getBonus() != null ? d.getBonus() : java.math.BigDecimal.ZERO), normalFont, normalFont);
+                addRow(amounts, "Descuento por Retardos", cf.format(d.getLatePenaltyDeduction() != null ? d.getLatePenaltyDeduction() : java.math.BigDecimal.ZERO), normalFont, normalFont);
+                addRow(amounts, "ISR", cf.format(d.getIsrDeduction() != null ? d.getIsrDeduction() : java.math.BigDecimal.ZERO), normalFont, normalFont);
+                addRow(amounts, "IMSS", cf.format(d.getImssDeduction() != null ? d.getImssDeduction() : java.math.BigDecimal.ZERO), normalFont, normalFont);
+                addRow(amounts, "Percepciones", cf.format(percepciones), sectionFont, normalFont);
+                addRow(amounts, "Deducciones", cf.format(d.getTotalDeductions() != null ? d.getTotalDeductions() : java.math.BigDecimal.ZERO), sectionFont, normalFont);
+                addRow(amounts, "Pago Neto", cf.format(d.getTotalSalary() != null ? d.getTotalSalary() : java.math.BigDecimal.ZERO), sectionFont, normalFont);
+                document.add(amounts);
+
+                if (Boolean.TRUE.equals(d.getHasBonusPenalties())) {
+                    com.lowagie.text.Paragraph warn = new com.lowagie.text.Paragraph(
+                            "Nota: No se aplicó bono por límites establecidos.", normalFont);
+                    warn.setSpacingBefore(8f);
+                    document.add(warn);
+                }
+            } catch (Exception ex) {
+            } finally {
+                document.close();
+            }
+            return baos.toByteArray();
+        }
+
+        private static void addRow(com.lowagie.text.pdf.PdfPTable t, String label, String value,
+                                   com.lowagie.text.Font lf, com.lowagie.text.Font vf) {
+            com.lowagie.text.pdf.PdfPCell c1 = new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase(label, lf));
+            c1.setBorderWidth(0);
+            c1.setPadding(4f);
+            com.lowagie.text.pdf.PdfPCell c2 = new com.lowagie.text.pdf.PdfPCell(new com.lowagie.text.Phrase(value, vf));
+            c2.setHorizontalAlignment(com.lowagie.text.Element.ALIGN_RIGHT);
+            c2.setBorderWidth(0);
+            c2.setPadding(4f);
+            t.addCell(c1);
+            t.addCell(c2);
         }
     }
 
     @PostMapping("/calculate-last-15-days/{employeeId}")
-    public ResponseEntity<ApiResponse<Payroll>> calculateLastFifteenDays(@PathVariable Long employeeId) {
-        try {
-            LocalDate endDate = LocalDate.now();
-            LocalDate startDate = endDate.minusDays(15);
-            
-            Payroll payroll = payrollService.calculatePayroll(employeeId, startDate, endDate);
-            return ResponseEntity.ok(ApiResponse.success("Nómina de últimos 15 días calculada", payroll));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Error al calcular nómina: " + e.getMessage()));
-        }
+    public ApiResponse<Payroll> calculateLastFifteenDays(@PathVariable Long employeeId) {
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(15);
+        Payroll payroll = payrollService.calculatePayroll(employeeId, startDate, endDate);
+        return ApiResponse.success("Nómina de últimos 15 días calculada", payroll);
     }
 }

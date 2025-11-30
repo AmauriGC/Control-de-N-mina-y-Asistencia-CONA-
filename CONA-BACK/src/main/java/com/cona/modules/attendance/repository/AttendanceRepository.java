@@ -2,6 +2,8 @@ package com.cona.modules.attendance.repository;
 
 import com.cona.modules.attendance.entity.Attendance;
 import com.cona.modules.employees.entity.Employee;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,9 +16,12 @@ import java.util.Optional;
 @Repository
 public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     
-    Optional<Attendance> findByEmployeeAndDate(Employee employee, LocalDate date);
+    // Some deployments might end up with duplicate rows for employee+date; use List to avoid NonUniqueResultException
+    List<Attendance> findByEmployeeAndDate(Employee employee, LocalDate date);
     
     List<Attendance> findByEmployeeOrderByDateDesc(Employee employee);
+    
+    Page<Attendance> findByEmployee(Employee employee, Pageable pageable);
     
     List<Attendance> findByEmployeeAndDateBetweenOrderByDateDesc(Employee employee, LocalDate startDate, LocalDate endDate);
     

@@ -20,6 +20,12 @@ public interface PayrollRepository extends JpaRepository<Payroll, Long> {
     Optional<Payroll> findByEmployeeIdAndPeriod(@Param("employeeId") Long employeeId, 
                                                @Param("periodStart") LocalDate periodStart, 
                                                @Param("periodEnd") LocalDate periodEnd);
+
+    // Safe variant to tolerate duplicate rows and allow de-duplication in service layer
+    @Query("SELECT p FROM Payroll p WHERE p.employee.id = :employeeId AND p.periodStart = :periodStart AND p.periodEnd = :periodEnd")
+    List<Payroll> findAllByEmployeeIdAndPeriod(@Param("employeeId") Long employeeId,
+                                               @Param("periodStart") LocalDate periodStart,
+                                               @Param("periodEnd") LocalDate periodEnd);
     
     @Query("SELECT p FROM Payroll p WHERE p.periodStart >= :startDate AND p.periodEnd <= :endDate")
     List<Payroll> findByPeriodRange(@Param("startDate") LocalDate startDate, 

@@ -130,5 +130,32 @@ export const attendanceService = {
         message: error.message || 'Error al obtener los conteos de asistencia'
       }
     }
+  },
+
+  // Obtener asistencia paginada de empleado
+  async getEmployeeAttendancePaginated(employeeId, page = 0, size = 15, startDate = null, endDate = null) {
+    try {
+      const params = { page, size }
+      if (startDate) params.startDate = startDate
+      if (endDate) params.endDate = endDate
+
+      console.log(`Calling paginated attendance for employee ${employeeId}, page ${page}, size ${size}`)
+      const response = await axiosClient.get(`/attendance/employee/${employeeId}/paginated`, {
+        params
+      })
+      
+      return {
+        success: response.success !== undefined ? response.success : true,
+        data: response.data,
+        message: response.message
+      }
+    } catch (error) {
+      console.error('Paginated attendance error:', error)
+      // Si es error 422, probablemente el empleado no existe
+      if (error.response?.status === 422) {
+        throw new Error(`Empleado con ID ${employeeId} no encontrado o inválido`)
+      }
+      throw new Error(error.response?.data?.message || error.message || 'Error al obtener la asistencia paginada')
+    }
   }
 }
