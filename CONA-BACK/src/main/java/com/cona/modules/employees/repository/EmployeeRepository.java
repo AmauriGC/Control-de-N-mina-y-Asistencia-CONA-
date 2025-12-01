@@ -2,6 +2,7 @@ package com.cona.modules.employees.repository;
 
 import com.cona.modules.employees.entity.Employee;
 import com.cona.modules.employees.enums.EmployeeStatus;
+import com.cona.modules.system_config.entity.WorkSchedule;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,4 +19,5 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     boolean existsByRfcAndIdNot(String rfc, Long id);
     Optional<Employee> findByUserId(Long userId);
     Optional<Employee> findByEmployeeKey(String employeeKey);
+    boolean existsByWorkSchedule(WorkSchedule workSchedule);
 }

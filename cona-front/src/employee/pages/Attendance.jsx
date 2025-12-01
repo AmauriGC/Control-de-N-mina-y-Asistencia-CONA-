@@ -9,6 +9,8 @@ import { attendanceService } from '../service/attendanceService'
 import { employeeService } from '@/admin/pages/employees/service/employeeService'
 import { alertConfig } from '@/lib/alert-config'
 import { formatISODateLocal } from '@/lib/utils'
+import { useBackendErrors, useFieldValidation, rulesLib, makeRules } from '@/components/criteria/use-validation'
+import FieldError from '@/components/criteria/FieldError'
 
 export default function AttendancePage() {
   const { user } = useAuth()
@@ -41,6 +43,12 @@ export default function AttendancePage() {
     'NON_WORKING_DAY': 'secondary',
     'HOLIDAY': 'default'
   }
+
+  const be = useBackendErrors()
+  const todayStr = new Date().toISOString().split('T')[0]
+  const thirtyDaysAgoStr = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const startDateField = useFieldValidation(thirtyDaysAgoStr, makeRules(rulesLib.isValidDate()), (v) => v)
+  const endDateField = useFieldValidation(todayStr, makeRules(rulesLib.isValidDate(), rulesLib.dateAfter(startDateField.value)), (v) => v)
 
   useEffect(() => {
     const init = async () => {
@@ -88,37 +96,33 @@ export default function AttendancePage() {
 
     setLoading(true)
     try {
-      // Obtener los últimos 30 días para estadísticas
-      const endDate = new Date().toISOString().split('T')[0]
-      const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+      const startDate = startDateField.value
+      const endDate = endDateField.value
 
       let attendanceResult
       try {
-        console.log('Attempting to load attendance for employee:', empId, 'page:', page)
-        // Intentar primero con paginado
-        attendanceResult = await attendanceService.getEmployeeAttendancePaginated(empId, page, pageSize)
-        console.log('Paginated result:', attendanceResult)
+        attendanceResult = await attendanceService.getEmployeeAttendancePaginated(empId, page, pageSize, startDate, endDate)
       } catch (error) {
-        console.warn('Paginado falló, usando endpoint por rango. Error:', error.message)
         // Fallback al endpoint por rango
-        try {
-          attendanceResult = await attendanceService.getEmployeeAttendanceRange(empId, startDate, endDate)
-          console.log('Range result:', attendanceResult)
-          // Simular paginación manual
-          const allData = attendanceResult.data || []
-          const startIndex = page * pageSize
-          const endIndex = startIndex + pageSize
-          const paginatedData = allData.slice(startIndex, endIndex)
-          
-          attendanceResult.data = {
+        const rangeRes = await attendanceService.getEmployeeAttendanceRange(empId, startDate, endDate)
+        if (!rangeRes.success) {
+          be.setFromList(rangeRes.errors)
+          alertConfig.error(rangeRes.message)
+          throw new Error(rangeRes.message)
+        }
+        const allData = rangeRes.data || []
+        const startIndex = page * pageSize
+        const endIndex = startIndex + pageSize
+        const paginatedData = allData.slice(startIndex, endIndex)
+        attendanceResult = {
+          success: true,
+          data: {
             content: paginatedData,
             totalPages: Math.ceil(allData.length / pageSize),
             totalElements: allData.length,
             number: page
-          }
-        } catch (rangeError) {
-          console.error('Range endpoint also failed:', rangeError)
-          throw new Error(`No se pudo cargar la asistencia: ${rangeError.message}`)
+          },
+          message: 'Asistencia cargada'
         }
       }
 
@@ -130,6 +134,7 @@ export default function AttendancePage() {
         setTotalElements(attendanceResult.data.totalElements || 0)
         setCurrentPage(page)
       } else {
+        be.setFromList(attendanceResult.errors || [])
         alertConfig.error(attendanceResult.message)
       }
 
@@ -137,7 +142,7 @@ export default function AttendancePage() {
         setStats(statsResult.data)
       }
     } catch (error) {
-      alertConfig.error('Error al cargar los datos de asistencia')
+      alertConfig.error(error.message)
     } finally {
       setLoading(false)
     }
@@ -178,6 +183,36 @@ export default function AttendancePage() {
 
       {effectiveEmployeeId && (
         <>
+          {/* Filtro reactivo por rango */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Filtrar por rango</CardTitle>
+              <CardDescription>Selecciona un rango de fechas válido</CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="text-sm">Fecha inicio</label>
+                <Input type="date" value={startDateField.rawValue} onChange={startDateField.onChange} onBlur={startDateField.onBlur} />
+                {startDateField.showError && (
+                  <FieldError error={startDateField.error} backendError={be.getFieldError('startDate')} />
+                )}
+              </div>
+              <div>
+                <label className="text-sm">Fecha fin</label>
+                <Input type="date" value={endDateField.rawValue} onChange={endDateField.onChange} onBlur={endDateField.onBlur} />
+                {endDateField.showError && (
+                  <FieldError error={endDateField.error} backendError={be.getFieldError('endDate')} />
+                )}
+              </div>
+              <div className="flex items-end">
+                <Button onClick={() => loadAttendanceData(effectiveEmployeeId, 0)} variant="default">Aplicar</Button>
+              </div>
+              {be.getGeneralError() && (
+                <div className="md:col-span-3 text-sm text-destructive">{be.getGeneralError()}</div>
+              )}
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">

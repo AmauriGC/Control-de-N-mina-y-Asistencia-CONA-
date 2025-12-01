@@ -43,7 +43,7 @@ public class Attendance {
     @Column(name = "daily_salary", precision = 10, scale = 2)
     private BigDecimal dailySalary;
 
-    @Column(name = "comments")
+    @Column(name = "comments", length = 500)
     private String comments;
 
     @Enumerated(EnumType.STRING)

@@ -33,9 +33,12 @@ export const attendanceService = {
         message: response.message
       }
     } catch (error) {
+      const backendMsg = error.response?.data?.message
+      const backendErrors = error.response?.data?.data
       return {
         success: false,
-        message: error.message || 'Error al obtener la asistencia'
+        message: backendMsg || error.message || 'Error al obtener la asistencia',
+        errors: Array.isArray(backendErrors) ? backendErrors : []
       }
     }
   },
@@ -43,8 +46,10 @@ export const attendanceService = {
   // Obtener asistencia por rango de fechas
   async getEmployeeAttendanceRange(employeeId, startDate, endDate) {
     try {
-      const response = await axiosClient.get(`/attendance/employee/${employeeId}/range`, {
-        params: { startDate, endDate }
+      // Usar el nuevo endpoint POST con body DTO
+      const response = await axiosClient.post(`/attendance/employee/${employeeId}/range`, {
+        startDate,
+        endDate
       })
       return {
         success: response.success,
@@ -52,9 +57,12 @@ export const attendanceService = {
         message: response.message
       }
     } catch (error) {
+      const backendMsg = error.response?.data?.message
+      const backendErrors = error.response?.data?.data // puede ser array según GlobalExceptionHandler
       return {
         success: false,
-        message: error.message || 'Error al obtener la asistencia'
+        message: backendMsg || error.message || 'Error al obtener la asistencia',
+        errors: Array.isArray(backendErrors) ? backendErrors : []
       }
     }
   },

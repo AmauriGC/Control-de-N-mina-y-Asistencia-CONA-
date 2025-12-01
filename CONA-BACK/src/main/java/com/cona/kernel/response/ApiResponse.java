@@ -21,12 +21,16 @@ public class ApiResponse<T> {
         this.timestamp = Instant.now();
     }
 
-    public static <T> ApiResponse<T> success(String message, T data) {
-        return new ApiResponse<>(true, message, data, null);
+    public static <T> ApiResponse<T> success(String message, T data, String path) {
+        return new ApiResponse<>(true, message, data, path);
     }
 
     public static <T> ApiResponse<T> success(String message) {
         return new ApiResponse<>(true, message, null, null);
+    }
+
+    public static <T> ApiResponse<T> success(String message, T data) {
+        return new ApiResponse<>(true, message, data, null);
     }
 
     public static <T> ApiResponse<T> error(String message) {

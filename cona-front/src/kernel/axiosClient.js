@@ -22,14 +22,30 @@ axiosClient.interceptors.request.use(
 
         return config;
     },
-    (error) => {
-        return Promise.reject(error);
-    }
+    (error) => Promise.reject(error)
 );
 
 axiosClient.interceptors.response.use(
     (response) => {
-        return response.data;
+        // El backend usa ApiResponse {success, message, data}
+        const body = response.data;
+        if (body && typeof body === 'object' && 'success' in body) {
+            return {
+                success: body.success,
+                message: body.message,
+                data: body.data,
+                errors: Array.isArray(body.data) ? body.data : [],
+                status: response.status,
+            };
+        }
+        // Fallback por si alguna ruta no usa ApiResponse
+        return {
+            success: true,
+            message: '',
+            data: body,
+            errors: [],
+            status: response.status,
+        };
     },
     (error) => {
         if (error.response) {
@@ -50,6 +66,7 @@ axiosClient.interceptors.response.use(
                 message: data?.message || "Error en la solicitud",
                 status,
                 data: data?.data || null,
+                errors: Array.isArray(data?.data) ? data.data : [],
             });
         }
 
@@ -57,6 +74,7 @@ axiosClient.interceptors.response.use(
             success: false,
             message: error.message || "Error de conexión",
             status: 0,
+            errors: [],
         });
     }
 );

@@ -1,5 +1,4 @@
 import axiosClient from '@/kernel/axiosClient'
-import { API_ENDPOINTS } from '@/lib/endpoints'
 
 export const payrollService = {
     /**
@@ -7,21 +6,9 @@ export const payrollService = {
      */
     async getLatestPayroll(employeeId) {
         try {
-            // Usar la ruta correcta del backend
-            const response = await axiosClient.get(`/payroll/employee/${employeeId}/latest`)
-            console.log('Payroll API response:', response)
-            return {
-                success: response.success !== undefined ? response.success : true,
-                data: response.data,
-                message: response.message
-            }
+            return await axiosClient.get(`/payroll/employee/${employeeId}/latest`)
         } catch (error) {
-            console.error('Payroll API error:', error)
-            return {
-                success: false,
-                message: error.response?.data?.message || error.message || 'Error al obtener la nómina',
-                error
-            }
+            return error
         }
     },
 
@@ -36,11 +23,7 @@ export const payrollService = {
             })
             return { success: true, data: blob }
         } catch (error) {
-            return {
-                success: false,
-                message: error.message || 'Error al descargar el PDF de la nómina',
-                error
-            }
+            return { success: false, message: error.message, error }
         }
     },
 
@@ -49,23 +32,12 @@ export const payrollService = {
      */
     async getPayrollDetail(employeeId, periodStart, periodEnd) {
         try {
-            const response = await axiosClient.get(`/payroll/detail/${employeeId}`, {
-                params: {
-                    periodStart,
-                    periodEnd
-                }
-            })
-            return {
-                success: response.success !== undefined ? response.success : true,
-                data: response.data,
-                message: response.message
-            }
+            // Validación básica: fechas presentes y orden
+            if (!employeeId) throw new Error('Empleado requerido')
+            if (!periodStart || !periodEnd) throw new Error('Periodo requerido')
+            return await axiosClient.get(`/payroll/detail/${employeeId}`, { params: { periodStart, periodEnd } })
         } catch (error) {
-            return {
-                success: false,
-                message: error.response?.data?.message || 'Error al obtener el detalle de la nómina',
-                error
-            }
+            return error
         }
     },
 
@@ -74,18 +46,9 @@ export const payrollService = {
      */
     async getEmployeePayrolls(employeeId) {
         try {
-            const response = await axiosClient.get(`/payroll/employee/${employeeId}`)
-            return {
-                success: response.success !== undefined ? response.success : true,
-                data: response.data,
-                message: response.message
-            }
+            return await axiosClient.get(`/payroll/employee/${employeeId}`)
         } catch (error) {
-            return {
-                success: false,
-                message: error.response?.data?.message || 'Error al obtener las nóminas del empleado',
-                error
-            }
+            return error
         }
     },
 
@@ -94,40 +57,12 @@ export const payrollService = {
      */
     async calculatePayroll(employeeId, periodStart, periodEnd) {
         try {
-            const response = await axiosClient.post(`/payroll/calculate/${employeeId}`, null, {
-                params: {
-                    periodStart,
-                    periodEnd
-                }
-            })
-            return {
-                success: response.success !== undefined ? response.success : true,
-                data: response.data,
-                message: response.message
-            }
+            if (!employeeId) throw new Error('Empleado requerido')
+            if (!periodStart || !periodEnd) throw new Error('Periodo requerido')
+            return await axiosClient.post(`/payroll/calculate/${employeeId}`, null, { params: { periodStart, periodEnd } })
         } catch (error) {
-            return {
-                success: false,
-                message: error.response?.data?.message || 'Error al calcular la nómina',
-                error
-            }
+            return error
         }
-    },
-
-    /**
-     * Formatear período de nómina para mostrar
-     */
-    formatPayrollPeriod(periodStart, periodEnd) {
-        const start = new Date(periodStart).toLocaleDateString('es-MX', {
-            day: '2-digit',
-            month: 'short'
-        })
-        const end = new Date(periodEnd).toLocaleDateString('es-MX', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-        })
-        return `${start} - ${end}`
     },
 
     /**
@@ -162,19 +97,9 @@ export const payrollService = {
      */
     async getEmployeePayrollHistory(employeeId, page = 0, size = 10) {
         try {
-            const response = await axiosClient.get(`/payroll/employee/${employeeId}`, {
-                params: { page, size }
-            })
-            return {
-                success: response.success,
-                data: response.data,
-                message: response.message
-            }
+            return await axiosClient.get(`/payroll/employee/${employeeId}`, { params: { page, size } })
         } catch (error) {
-            return {
-                success: false,
-                message: error.message || 'Error al obtener el historial de nóminas'
-            }
+            return error
         }
     },
 
@@ -200,27 +125,15 @@ export const payrollService = {
      * Obtener etiquetas de estado de nómina
      */
     getPayrollStatusLabel(status) {
-        const statusLabels = {
-            'DRAFT': 'Borrador',
-            'CALCULATED': 'Calculada',
-            'APPROVED': 'Aprobada',
-            'PAID': 'Pagada',
-            'CANCELLED': 'Cancelada'
-        }
-        return statusLabels[status] || status
+        const labels = { DRAFT: 'Borrador', CALCULATED: 'Calculada', APPROVED: 'Aprobada', PAID: 'Pagada', CANCELLED: 'Cancelada' }
+        return labels[status] || status
     },
 
     /**
      * Obtener variantes de color para estados
      */
     getPayrollStatusVariant(status) {
-        const statusVariants = {
-            'DRAFT': 'secondary',
-            'CALCULATED': 'outline',
-            'APPROVED': 'default',
-            'PAID': 'success',
-            'CANCELLED': 'destructive'
-        }
-        return statusVariants[status] || 'secondary'
+        const variants = { DRAFT: 'secondary', CALCULATED: 'outline', APPROVED: 'default', PAID: 'success', CANCELLED: 'destructive' }
+        return variants[status] || 'secondary'
     }
 }

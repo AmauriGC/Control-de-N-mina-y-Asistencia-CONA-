@@ -9,9 +9,10 @@ import { Clock, CheckCircle, Calendar } from 'lucide-react'
 import { attendanceService } from '@/employee/service/attendanceService'
 import alertConfig from '@/lib/alert-config'
 import Logo from '@/components/Logo'
+import { makeRules, rulesLib, useFieldValidation } from '@/components/criteria/use-validation'
+import { sanitize } from '@/components/criteria/criteria'
 
 export default function AttendanceCheckIn() {
-  const [employeeKey, setEmployeeKey] = useState('')
   const [loading, setLoading] = useState(false)
   const [lastCheckIn, setLastCheckIn] = useState(null)
   const [now, setNow] = useState(() => new Date())
@@ -22,22 +23,33 @@ export default function AttendanceCheckIn() {
     return () => clearInterval(id)
   }, [])
 
+  const employeeKeyField = useFieldValidation(
+    '',
+    makeRules(
+      rulesLib.required('El número de empleado es obligatorio'),
+      rulesLib.alphanumeric('Solo letras y números'),
+      rulesLib.minLength(1, 'Mínimo 1 carácter'),
+      rulesLib.maxLength(5, 'Máximo 5 caracteres')
+    ),
+    sanitize.trim
+  )
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    if (!employeeKey.trim()) {
-      await alertConfig.toastError({ title: 'Número requerido', text: 'Ingresa tu número de empleado' })
+    if (!employeeKeyField.isValid) {
+      await alertConfig.toastError({ title: 'Número inválido', text: employeeKeyField.error || 'Ingresa un número de empleado válido' })
       return
     }
 
     setLoading(true)
     
     try {
-      const result = await attendanceService.checkInOut(employeeKey.trim())
-      
+      const result = await attendanceService.checkInOut(employeeKeyField.value.trim())
+
       if (result.success) {
         setLastCheckIn(result.data)
-        setEmployeeKey('')
+        employeeKeyField.reset()
 
         const hasBoth = !!result.data.checkInTime && !!result.data.checkOutTime
         const isCheckOut = !!result.data.checkOutTime && !hasBoth
@@ -131,9 +143,9 @@ export default function AttendanceCheckIn() {
                     label="Número de Empleado"
                     type="text"
                     placeholder="Número de empleado"
-                    value={employeeKey}
-                    onChange={(e) => setEmployeeKey(e.target.value)}
-                    maxLength={10}
+                    value={employeeKeyField.value}
+                    onChange={employeeKeyField.onChange}
+                    maxLength={5}
                     disabled={loading}
                     className="text-center"
                     autoComplete="off"

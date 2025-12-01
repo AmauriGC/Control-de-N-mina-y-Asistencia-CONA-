@@ -55,10 +55,10 @@ export default function ResetPasswordPage() {
                     text: result.message || "Error al restablecer contraseña"
                 });
             }
-        } catch {
+        } catch(error) {
             await alertConfig.toastError({
                 title: "Error",
-                text: "Ocurrió un error al restablecer la contraseña"
+                text: error.message
             });
         } finally {
             setIsLoading(false);

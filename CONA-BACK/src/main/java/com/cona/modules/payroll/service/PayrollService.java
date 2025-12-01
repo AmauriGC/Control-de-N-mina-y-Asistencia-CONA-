@@ -1,5 +1,7 @@
 package com.cona.modules.payroll.service;
 
+import com.cona.exception.types.BusinessException;
+import com.cona.kernel.utils.Sanitizer;
 import com.cona.modules.attendance.entity.Attendance;
 import com.cona.modules.attendance.enums.AttendanceStatus;
 import com.cona.modules.attendance.repository.AttendanceRepository;
@@ -50,12 +52,18 @@ public class PayrollService {
 
     @Transactional
     public Payroll calculatePayroll(Long employeeId, LocalDate periodStart, LocalDate periodEnd) {
+        if (periodStart == null || periodEnd == null || periodEnd.isBefore(periodStart)) {
+            throw new BusinessException("INVALID_PERIOD", "El periodo es inválido");
+        }
+        if (java.time.temporal.ChronoUnit.DAYS.between(periodStart, periodEnd) + 1 > 31) {
+            throw new BusinessException("INVALID_PERIOD_LENGTH", "El periodo no debe exceder 31 días");
+        }
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
+                .orElseThrow(() -> new BusinessException("EMPLOYEE_NOT_FOUND", "Empleado no encontrado"));
 
         PayrollConfig config = payrollConfigRepository.findAll().stream()
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("PayrollConfig not found"));
+                .orElseThrow(() -> new BusinessException("PAYROLL_CONFIG_NOT_FOUND", "Configuración de nómina no encontrada"));
 
         // ASEGURAR que todos los días tengan registro ANTES de consultar
         ensureAllDaysHaveAttendanceForEmployee(employee, periodStart, periodEnd);
@@ -299,8 +307,8 @@ public class PayrollService {
                 .collect(Collectors.toList());
         
         Employee employee = employeeRepository.findById(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
-        
+                .orElseThrow(() -> new BusinessException("EMPLOYEE_NOT_FOUND", "Empleado no encontrado"));
+
         // Crear registros para todos los días (incluyendo domingos como no laborales)
         for (LocalDate date : allDates) {
             // Saltar solo sábados
@@ -322,8 +330,8 @@ public class PayrollService {
                     absentRecord.setStatus(AttendanceStatus.ABSENT);
                     absentRecord.setHoursWorked(0.0);
                     absentRecord.setDailySalary(BigDecimal.ZERO);
-                    absentRecord.setComments("Falta generada automáticamente");
-                    
+                    absentRecord.setComments(Sanitizer.sanitizeComment("Falta generada automáticamente"));
+
                     // Guardar el registro
                     absentRecord = attendanceRepository.save(absentRecord);
                     attendanceMap.put(date, absentRecord);
@@ -343,7 +351,7 @@ public class PayrollService {
     public PayrollDetailDto getPayrollDetail(Long employeeId, LocalDate periodStart, LocalDate periodEnd) {
         List<Payroll> payrolls = payrollRepository.findAllByEmployeeIdAndPeriod(employeeId, periodStart, periodEnd);
         if (payrolls.isEmpty()) {
-            throw new RuntimeException("Payroll not found for the specified period");
+            throw new BusinessException("PAYROLL_NOT_FOUND", "No se encontró nómina para el periodo especificado");
         }
         if (payrolls.size() > 1) {
             log.warn("Detected {} duplicate payrolls for employee {} period {} - {}. Returning the first.",
@@ -400,69 +408,15 @@ public class PayrollService {
         if (!existing.isEmpty()) {
             return; // Ya existe, no hacer nada
         }
-
-        // Crear nuevo registro
-        Attendance newAttendance = new Attendance();
-        newAttendance.setEmployee(employee);
-        newAttendance.setDate(date);
-
-        // Verificar si es domingo (día no laboral)
-        if (date.getDayOfWeek().getValue() == 7) {
-            newAttendance.setStatus(AttendanceStatus.NON_WORKING_DAY);
-            newAttendance.setDailySalary(BigDecimal.ZERO);
-            newAttendance.setComments("Día no laboral - Domingo");
-            attendanceRepository.save(newAttendance);
-            return;
-        }
-
-        // Verificar si es día festivo
-        Optional<Holiday> holiday = holidayRepository.findByDate(date);
-        if (holiday.isPresent()) {
-            newAttendance.setStatus(AttendanceStatus.HOLIDAY);
-            newAttendance.setDailySalary(BigDecimal.ZERO);
-            newAttendance.setComments("Día festivo - " + holiday.get().getName());
-            attendanceRepository.save(newAttendance);
-            return;
-        }
-
-        // Verificar si existe un permiso/vacación aprobado para ese día
-        Optional<Leave> approvedLeave = leaveRepository.findByEmployeeAndDateBetweenStartAndEndDate(employee, date);
-        if (approvedLeave.isPresent()) {
-            Leave leave = approvedLeave.get();
-            if (leave.getLeaveRequest().getType() == LeaveType.VACATION) {
-                newAttendance.setStatus(AttendanceStatus.VACATION);
-                // Pago de vacaciones: (horas/día * salario/hora) * 3
-                WorkSchedule ws = employee.getWorkSchedule();
-                Integer hoursPerDay = ws != null && ws.getTotalHoursPerDay() != null ? ws.getTotalHoursPerDay() : 0;
-                if (employee.getHourlyRate() != null && hoursPerDay > 0) {
-                    BigDecimal dailySalary = employee.getHourlyRate()
-                            .multiply(BigDecimal.valueOf(hoursPerDay))
-                            .multiply(BigDecimal.valueOf(3));
-                    newAttendance.setDailySalary(dailySalary);
-                }
-                newAttendance.setComments("Vacaciones aprobadas");
-            } else {
-                // Permisos: pago x3
-                newAttendance.setStatus(AttendanceStatus.JUSTIFIED_ABSENCE);
-                WorkSchedule ws = employee.getWorkSchedule();
-                Integer hoursPerDay = ws != null && ws.getTotalHoursPerDay() != null ? ws.getTotalHoursPerDay() : 0;
-                if (employee.getHourlyRate() != null && hoursPerDay > 0) {
-                    BigDecimal dailySalary = employee.getHourlyRate()
-                            .multiply(BigDecimal.valueOf(hoursPerDay))
-                            .multiply(BigDecimal.valueOf(3));
-                    newAttendance.setDailySalary(dailySalary);
-                }
-                newAttendance.setComments("Permiso aprobado");
-            }
-            attendanceRepository.save(newAttendance);
-            return;
-        }
-
-        // Si no hay permisos/vacaciones: marcar como falta
-        newAttendance.setStatus(AttendanceStatus.ABSENT);
-        newAttendance.setDailySalary(BigDecimal.ZERO);
-        newAttendance.setComments("Falta generada automáticamente para cálculo de nómina");
-        attendanceRepository.save(newAttendance);
+        // Crear registro ABSENT sanitizando comentario
+        Attendance absentRecord = new Attendance();
+        absentRecord.setEmployee(employee);
+        absentRecord.setDate(date);
+        absentRecord.setStatus(AttendanceStatus.ABSENT);
+        absentRecord.setHoursWorked(0.0);
+        absentRecord.setDailySalary(BigDecimal.ZERO);
+        absentRecord.setComments(Sanitizer.sanitizeComment("Falta generada automáticamente"));
+        attendanceRepository.save(absentRecord);
     }
 
     // Clase interna para cálculos
@@ -485,3 +439,4 @@ public class PayrollService {
         Boolean hasBonusPenalties = false;
     }
 }
+

@@ -35,16 +35,16 @@ public class Employee {
     @Column(name = "employee_key", nullable = false, unique = true, length = 5)
     private String employeeKey;
 
-    @Column(name = "full_name", nullable = false)
+    @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
-    @Column(name = "phone")
+    @Column(name = "phone", length = 10)
     private String phone;
 
-    @Column(name = "position", nullable = false)
+    @Column(name = "position", nullable = false, length = 50)
     private String position;
 
-    @Column(name = "rfc", nullable = false, unique = true)
+    @Column(name = "rfc", nullable = false, unique = true, length = 13)
     private String rfc;
 
     @Column(name = "hourly_rate", nullable = false, precision = 10, scale = 2)
@@ -60,13 +60,13 @@ public class Employee {
     @Column(name = "contract_end_date")
     private LocalDate contractEndDate;
 
-    @Column(name = "bank_account")
+    @Column(name = "bank_account", length = 20)
     private String bankAccount;
 
-    @Column(name = "bank_name")
+    @Column(name = "bank_name", length = 50)
     private String bankName;
 
-    @Column(name = "clabe")
+    @Column(name = "clabe", length = 18)
     private String clabe;
 
     @ManyToOne(fetch = FetchType.LAZY)

@@ -34,9 +34,10 @@ public class Report {
     @Column(nullable = false)
     private LocalDateTime generatedAt;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String filePath;
 
+    @Column(length = 1000)
     private String parameters;
 
     @CreatedDate

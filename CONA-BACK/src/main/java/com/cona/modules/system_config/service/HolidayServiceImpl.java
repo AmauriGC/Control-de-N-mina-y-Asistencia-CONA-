@@ -6,6 +6,7 @@ import com.cona.modules.system_config.controller.dto.HolidayResponse;
 import com.cona.modules.system_config.entity.Holiday;
 import com.cona.modules.system_config.enums.HolidayType;
 import com.cona.modules.system_config.repository.HolidayRepository;
+import com.cona.kernel.utils.Sanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,19 +23,15 @@ public class HolidayServiceImpl implements HolidayService {
     @Override
     public HolidayResponse create(HolidayRequest request) {
 
-        if (request.getHolidayDate().isBefore(LocalDate.now().withDayOfYear(1))) {
-            throw new BusinessException("INVALID_DATE", "La fecha debe ser del año en curso o futura");
-        }
-
-        if (repository.existsByDate(request.getHolidayDate())) {
-            throw new BusinessException("DUPLICATED_HOLIDAY_DATE", "Ya existe un festivo registrado para la fecha: " + request.getHolidayDate());
+        if (repository.existsByMonthAndDay(request.getHolidayDate().getMonthValue(), request.getHolidayDate().getDayOfMonth())) {
+            throw new BusinessException("DUPLICATED_HOLIDAY_DATE", "Ya existe un festivo registrado para la fecha: " + request.getHolidayDate().getMonthValue() + "/" + request.getHolidayDate().getDayOfMonth());
         }
 
         Holiday holiday = new Holiday();
         holiday.setDate(request.getHolidayDate());
-        holiday.setName(request.getName());
+        holiday.setName(Sanitizer.sanitizeString(request.getName()));
         holiday.setType(request.getType());
-        holiday.setDescription(request.getDescription());
+        holiday.setDescription(Sanitizer.sanitizeComment(request.getDescription()));
 
         Holiday saved = repository.save(holiday);
 
@@ -48,20 +45,16 @@ public class HolidayServiceImpl implements HolidayService {
                 .orElseThrow(() -> new BusinessException("NOT_FOUND_HOLIDAY", "No se encontró el día festivo con ID " + id));
 
         if (!holiday.getDate().equals(request.getHolidayDate())) {
-            if (repository.existsByDateAndIdNot(request.getHolidayDate(), id)) {
-                throw new BusinessException("HOLIDAY_DATE_ALREADY_EXIST", "Ya existe un festivo registrado para la fecha: " + request.getHolidayDate());
-            }
-
-            if (request.getHolidayDate().isBefore(LocalDate.now().withDayOfYear(1))) {
-                throw new BusinessException("INVALID_DATE", "La fecha debe ser del año en curso o futura");
+            if (repository.existsByMonthAndDayAndIdNot(request.getHolidayDate().getMonthValue(), request.getHolidayDate().getDayOfMonth(), id)) {
+                throw new BusinessException("HOLIDAY_DATE_ALREADY_EXIST", "Ya existe un festivo registrado para la fecha: " + request.getHolidayDate().getMonthValue() + "/" + request.getHolidayDate().getDayOfMonth());
             }
 
             holiday.setDate(request.getHolidayDate());
         }
 
-        holiday.setName(request.getName());
+        holiday.setName(Sanitizer.sanitizeString(request.getName()));
         holiday.setType(request.getType());
-        holiday.setDescription(request.getDescription());
+        holiday.setDescription(Sanitizer.sanitizeComment(request.getDescription()));
 
         Holiday updated = repository.save(holiday);
 

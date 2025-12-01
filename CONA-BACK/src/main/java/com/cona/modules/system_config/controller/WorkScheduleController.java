@@ -5,7 +5,9 @@ import com.cona.modules.system_config.controller.dto.WorkScheduleRequest;
 import com.cona.modules.system_config.controller.dto.WorkScheduleResponse;
 import com.cona.modules.system_config.service.WorkScheduleService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,6 +15,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/system-config/work-schedules")
 @RequiredArgsConstructor
+@Validated
 public class WorkScheduleController {
 
     private final WorkScheduleService service;
@@ -25,7 +28,7 @@ public class WorkScheduleController {
 
     @PutMapping("/{id}")
     public ApiResponse<WorkScheduleResponse> update(
-            @PathVariable Long id,
+            @PathVariable @Positive(message = "El ID debe ser positivo") Long id,
             @Valid @RequestBody WorkScheduleRequest request
     ) {
         WorkScheduleResponse response = service.update(id, request);
@@ -33,7 +36,7 @@ public class WorkScheduleController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<WorkScheduleResponse> getById(@PathVariable Long id) {
+    public ApiResponse<WorkScheduleResponse> getById(@PathVariable @Positive(message = "El ID debe ser positivo") Long id) {
         WorkScheduleResponse response = service.getById(id);
         return ApiResponse.success("Horario de trabajo obtenido exitosamente", response);
     }
@@ -51,13 +54,13 @@ public class WorkScheduleController {
     }
 
     @PutMapping("/{id}/toggle-status")
-    public ApiResponse<WorkScheduleResponse> toggleStatus(@PathVariable Long id) {
+    public ApiResponse<WorkScheduleResponse> toggleStatus(@PathVariable @Positive(message = "El ID debe ser positivo") Long id) {
         WorkScheduleResponse response = service.toggleStatus(id);
         return ApiResponse.success("Estado del horario cambiado exitosamente", response);
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<String> delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable @Positive(message = "El ID debe ser positivo") Long id) {
         service.delete(id);
         return ApiResponse.success("Horario de trabajo eliminado exitosamente");
     }

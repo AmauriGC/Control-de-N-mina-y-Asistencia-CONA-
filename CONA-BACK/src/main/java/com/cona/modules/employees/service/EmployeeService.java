@@ -32,13 +32,15 @@ public class EmployeeService {
 
     @Transactional
     public EmployeeResponseDto register(EmployeeRequestDto dto) {
+        // Sanitización especializada
         dto.setFullName(Sanitizer.sanitizeString(dto.getFullName()));
         dto.setEmail(Sanitizer.normalizeEmail(dto.getEmail()));
-        dto.setPhone(Sanitizer.trim(dto.getPhone()));
-        dto.setRfc(Sanitizer.trimAndLower(dto.getRfc()));
+        dto.setPhone(Sanitizer.sanitizePhone(dto.getPhone()));
+        dto.setRfc(Sanitizer.sanitizeRfc(dto.getRfc()));
         dto.setPosition(Sanitizer.sanitizeString(dto.getPosition()));
-        dto.setBankAccount(Sanitizer.trim(dto.getBankAccount()));
+        dto.setBankAccount(Sanitizer.sanitizeBankAccount(dto.getBankAccount()));
         dto.setBankName(Sanitizer.sanitizeString(dto.getBankName()));
+        dto.setClabe(Sanitizer.sanitizeClabe(dto.getClabe()));
 
         if (userRepository.existsByEmail(dto.getEmail()))
             throw new BusinessException("INVALID_EMAIL", "El correo ya está registrado");
@@ -119,7 +121,8 @@ public class EmployeeService {
 
     public EmployeeResponseDto getByUserId(Long userId) {
         Employee employee = employeeRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Empleado no encontrado para el usuario: " + userId));
+                .orElseThrow(() ->
+                        new BusinessException("INVALID_ID", "No se encontró el empleado"));
         return toDto(employee);
     }
 
@@ -141,13 +144,15 @@ public class EmployeeService {
 
     @Transactional
     public EmployeeResponseDto update(Long id, EmployeeRequestDto dto) {
+        // Sanitización especializada
         dto.setFullName(Sanitizer.sanitizeString(dto.getFullName()));
         dto.setEmail(Sanitizer.normalizeEmail(dto.getEmail()));
-        dto.setPhone(Sanitizer.trim(dto.getPhone()));
-        dto.setRfc(Sanitizer.trimAndLower(dto.getRfc()));
+        dto.setPhone(Sanitizer.sanitizePhone(dto.getPhone()));
+        dto.setRfc(Sanitizer.sanitizeRfc(dto.getRfc()));
         dto.setPosition(Sanitizer.sanitizeString(dto.getPosition()));
-        dto.setBankAccount(Sanitizer.trim(dto.getBankAccount()));
+        dto.setBankAccount(Sanitizer.sanitizeBankAccount(dto.getBankAccount()));
         dto.setBankName(Sanitizer.sanitizeString(dto.getBankName()));
+        dto.setClabe(Sanitizer.sanitizeClabe(dto.getClabe()));
 
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new BusinessException("INVALID_ID", "No se encontró el empleado"));
