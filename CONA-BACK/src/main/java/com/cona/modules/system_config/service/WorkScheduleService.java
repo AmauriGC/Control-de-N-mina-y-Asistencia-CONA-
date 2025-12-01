@@ -1,9 +1,12 @@
 package com.cona.modules.system_config.service;
 
+import com.cona.exception.types.BusinessException;
+import com.cona.modules.employees.repository.EmployeeRepository;
 import com.cona.modules.system_config.controller.dto.WorkScheduleRequest;
 import com.cona.modules.system_config.controller.dto.WorkScheduleResponse;
 import com.cona.modules.system_config.entity.WorkSchedule;
 import com.cona.modules.system_config.repository.WorkScheduleRepository;
+import com.cona.kernel.utils.Sanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +19,7 @@ import java.util.stream.Collectors;
 public class WorkScheduleService {
 
     private final WorkScheduleRepository workScheduleRepository;
+    private final EmployeeRepository employeeRepository;
 
     private WorkScheduleResponse toDto(WorkSchedule entity) {
         WorkScheduleResponse dto = new WorkScheduleResponse();
@@ -35,15 +39,17 @@ public class WorkScheduleService {
     @Transactional
     public WorkScheduleResponse create(WorkScheduleRequest request) {
         WorkSchedule entity = new WorkSchedule();
-        entity.setName(request.getName());
+        entity.setName(Sanitizer.sanitizeString(request.getName()));
         entity.setStartTime(request.getEntryTime());
         entity.setEndTime(request.getExitTime());
         entity.setToleranceMinutes(request.getToleranceMinutes());
-        entity.setDescription(request.getDescription());
+        entity.setDescription(Sanitizer.sanitizeComment(request.getDescription()));
         entity.setActive(true);
 
-        // Calcular horas totales por día (enteras)
-        int totalHours = (int) java.time.Duration.between(entity.getStartTime(), entity.getEndTime()).toHours();
+        int totalHours = (int) java.time.Duration.between(
+                entity.getStartTime(),
+                entity.getEndTime()
+        ).toHours();
         entity.setTotalHoursPerDay(Math.max(totalHours, 0));
 
         WorkSchedule saved = workScheduleRepository.save(entity);
@@ -53,16 +59,19 @@ public class WorkScheduleService {
     @Transactional
     public WorkScheduleResponse update(Long id, WorkScheduleRequest request) {
         WorkSchedule entity = workScheduleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("WorkSchedule not found"));
+                .orElseThrow(() ->
+                        new BusinessException("WORKSCHEDULE_NOT_FOUND", "El horario de trabajo no existe"));
 
-        entity.setName(request.getName());
+        entity.setName(Sanitizer.sanitizeString(request.getName()));
         entity.setStartTime(request.getEntryTime());
         entity.setEndTime(request.getExitTime());
         entity.setToleranceMinutes(request.getToleranceMinutes());
-        entity.setDescription(request.getDescription());
+        entity.setDescription(Sanitizer.sanitizeComment(request.getDescription()));
 
-        // Recalcular horas totales por día
-        int totalHours = (int) java.time.Duration.between(entity.getStartTime(), entity.getEndTime()).toHours();
+        int totalHours = (int) java.time.Duration.between(
+                entity.getStartTime(),
+                entity.getEndTime()
+        ).toHours();
         entity.setTotalHoursPerDay(Math.max(totalHours, 0));
 
         WorkSchedule saved = workScheduleRepository.save(entity);
@@ -71,7 +80,8 @@ public class WorkScheduleService {
 
     public WorkScheduleResponse getById(Long id) {
         WorkSchedule entity = workScheduleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("WorkSchedule not found"));
+                .orElseThrow(() ->
+                        new BusinessException("WORKSCHEDULE_NOT_EXIST", "El horario de trabajo no existe"));
         return toDto(entity);
     }
 
@@ -90,7 +100,9 @@ public class WorkScheduleService {
     @Transactional
     public WorkScheduleResponse toggleStatus(Long id) {
         WorkSchedule entity = workScheduleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("WorkSchedule not found"));
+                .orElseThrow(() ->
+                        new BusinessException("WORKSCHEDULE_NOT_FOUND", "El horario de trabajo no existe"));
+
         entity.setActive(!entity.getActive());
         WorkSchedule saved = workScheduleRepository.save(entity);
         return toDto(saved);
@@ -99,7 +111,16 @@ public class WorkScheduleService {
     @Transactional
     public void delete(Long id) {
         WorkSchedule entity = workScheduleRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("WorkSchedule not found"));
+                .orElseThrow(() ->
+                        new BusinessException("WORKSCHEDULE_NOT_FOUND", "El horario de trabajo no existe"));
+
+        if (employeeRepository.existsByWorkSchedule(entity)) {
+            throw new BusinessException(
+                    "WORKSCHEDULE_IN_USE",
+                    "El horario está siendo usado por empleados y no puede eliminarse"
+            );
+        }
+
         workScheduleRepository.delete(entity);
     }
 }

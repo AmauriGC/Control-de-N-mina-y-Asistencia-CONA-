@@ -12,20 +12,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Upload, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { alertConfig } from "@/lib/alert-config";
-import { useFieldValidation } from "@/components/criteria/use-validation";
-import { rulesLib } from "@/components/criteria/criteria";
+import { useBackendErrors, useFieldValidation, makeRules, rulesLib } from "@/components/criteria/use-validation";
+import { presets } from "@/components/criteria/criteria";
 import { useAuth } from '@/auth/context/AuthContext'
 import { attendanceService } from '@/employee/service/attendanceService'
 import { justificationService } from '@/admin/pages/justification/service/justificationService'
 import { employeeService } from '@/admin/pages/employees/service/employeeService'
+import FieldError from '@/components/criteria/FieldError'
+import FieldHint from '@/components/criteria/FieldHint'
 
 export default function JustificationsEmployee() {
   const { user } = useAuth()
+  const be = useBackendErrors()
+  const reasonField = useFieldValidation('', presets.justifications.reason)
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAbsence, setSelectedAbsence] = useState(null);
   const [absences, setAbsences] = useState([])
   const [myJustifications, setMyJustifications] = useState([])
   const [resolvedEmployeeId, setResolvedEmployeeId] = useState(null)
+  const [file, setFile] = useState(null)
 
   const loadData = async () => {
     // Resolver employeeId (fallback si no viene en el token)
@@ -76,6 +81,37 @@ export default function JustificationsEmployee() {
     setSelectedAbsence(absence);
     setIsDialogOpen(true);
   };
+
+  const handleFileChange = (e) => {
+    const f = e.target.files?.[0]
+    setFile(f || null)
+  }
+
+  const validateFile = () => {
+    if (!file) return true
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png']
+    if (!allowed.includes(file.type)) {
+      alertConfig.error('Tipo de archivo no permitido. Solo PDF/JPG/PNG')
+      return false
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alertConfig.error('El archivo excede el tamaño máximo (5MB)')
+      return false
+    }
+    return true
+  }
+
+  const submitJustification = async () => {
+    if (!reasonField.isValid) {
+      reasonField.onBlur()
+      alertConfig.error(reasonField.error)
+      return
+    }
+    if (!validateFile()) return
+
+    // TODO: obtener employeeId y attendanceId del contexto/listado
+    alertConfig.error('Falta implementar envío: obtener employeeId y attendanceId en esta vista')
+  }
 
   return (
     <div className="p-8 space-y-6 min-h-screen">
@@ -197,6 +233,7 @@ export default function JustificationsEmployee() {
 function JustificationForm({ absence, employeeId, onClose, onSubmitted }) {
   const [formData, setFormData] = useState({ documentType: "", comments: "", file: null });
   const { user } = useAuth()
+  const be = useBackendErrors()
 
   const commentField = useFieldValidation(formData.comments, [
     rulesLib.optional(rulesLib.minLength(5, "Mínimo 5 caracteres")),
@@ -224,10 +261,7 @@ function JustificationForm({ absence, employeeId, onClose, onSubmitted }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.documentType || !formData.file) {
-      await alertConfig.toastError({
-        title: "Campos requeridos",
-        text: "Completa todos los campos y sube un documento",
-      });
+      await alertConfig.toastError({ title: "Campos requeridos", text: "Completa todos los campos y sube un documento" });
       return;
     }
     if (commentField.value.trim().length > 0 && !commentField.isValid) {
@@ -242,13 +276,12 @@ function JustificationForm({ absence, employeeId, onClose, onSubmitted }) {
     }
     const res = await justificationService.submit(payload, formData.file)
     if (res.success) {
-      await alertConfig.toastSuccess({ title: "Justificación enviada", text: res.message || "Tu justificación ha sido enviada para revisión" })
+      await alertConfig.toastSuccess({ title: "Justificación enviada", text: res.message })
       onClose()
-      if (typeof onSubmitted === 'function') {
-        try { await onSubmitted() } catch {}
-      }
+      if (typeof onSubmitted === 'function') { try { await onSubmitted() } catch {} }
     } else {
-      await alertConfig.toastError({ title: 'Error', text: res.message || 'No se pudo enviar la justificación' })
+      be.setFromList(res.errors || [])
+      await alertConfig.toastError({ title: 'Error', text: res.message })
     }
   };
 
@@ -256,10 +289,7 @@ function JustificationForm({ absence, employeeId, onClose, onSubmitted }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="documentType">Tipo de Documento *</Label>
-        <Select
-          value={formData.documentType}
-          onValueChange={(value) => setFormData({ ...formData, documentType: value })}
-        >
+        <Select value={formData.documentType} onValueChange={(value) => setFormData({ ...formData, documentType: value })}>
           <SelectTrigger>
             <SelectValue placeholder="Selecciona un tipo" />
           </SelectTrigger>
@@ -269,6 +299,7 @@ function JustificationForm({ absence, employeeId, onClose, onSubmitted }) {
             <SelectItem value="OTHER">Otro</SelectItem>
           </SelectContent>
         </Select>
+        <FieldError backendError={be.getFieldError('documentType')} />
       </div>
 
       <div className="space-y-2">
@@ -276,48 +307,28 @@ function JustificationForm({ absence, employeeId, onClose, onSubmitted }) {
         <div className="border-2 border-dashed rounded-lg p-6 text-center hover:border-primary transition-colors cursor-pointer">
           <input type="file" id="file" onChange={handleFileChange} accept=".pdf,.jpg,.jpeg,.png" className="hidden" />
           <label htmlFor="file" className="cursor-pointer">
-            <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
             {formData.file ? (
               <p className="text-sm font-medium">{formData.file.name}</p>
             ) : (
-              <>
-                <p className="text-sm font-medium">Click para subir archivo</p>
-                <p className="text-xs text-muted-foreground mt-1">PDF, JPG, PNG (máx. 5MB)</p>
-              </>
+              <p className="text-sm font-medium">Selecciona archivo (PDF, JPG, PNG)</p>
             )}
           </label>
         </div>
+        <FieldError backendError={be.getFieldError('file')} />
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="comments">Comentarios (opcional)</Label>
-        <Textarea
-          id="comments"
-          placeholder="Agrega detalles adicionales..."
-          value={commentField.value}
-          onChange={(e) => {
-            commentField.onChange(e);
-            setFormData({ ...formData, comments: e.target.value });
-          }}
-          onBlur={commentField.onBlur}
-          rows={3}
-        />
-        {commentField.showError && <p className="text-xs text-destructive">{commentField.error}</p>}
-        {commentField.value.trim().length > 0 && !commentField.showError && (
-          <p className="text-xs text-muted-foreground">{commentField.value.trim().length}/300</p>
-        )}
+        <Textarea id="comments" placeholder="Agrega detalles adicionales..." value={commentField.value} onChange={(e) => { commentField.onChange(e); setFormData({ ...formData, comments: e.target.value }); }} onBlur={commentField.onBlur} rows={3} />
+        <FieldError error={commentField.error} backendError={be.getFieldError('reason')} />
+        <FieldHint value={commentField.value} max={300} />
       </div>
 
+      {be.getGeneralError() && <div className="text-sm text-destructive">{be.getGeneralError()}</div>}
+
       <div className="flex justify-end gap-3">
-        <Button type="button" variant="outline" onClick={onClose}>
-          Cancelar
-        </Button>
-        <Button
-          type="submit"
-          disabled={
-            !formData.documentType || !formData.file || (commentField.value.trim().length > 0 && !commentField.isValid)
-          }
-        >
+        <Button type="button" variant="outline" onClick={onClose}>Cancelar</Button>
+        <Button type="submit" disabled={!formData.documentType || !formData.file || (commentField.value.trim().length > 0 && !commentField.isValid)}>
           Enviar Justificación
         </Button>
       </div>

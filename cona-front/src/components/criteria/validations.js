@@ -1,6 +1,6 @@
 export const VALIDATION_REGEX = {
     PASSWORD: /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&.])[A-Za-z\d@$!%*?&.]{8,}$/,
-    EMAIL: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+    EMAIL: /^[a-zA-Z0-9._%+-]+@(cona\.mx|utez\.edu\.mx|cona\.com|gmail\.com)$/,
     ONLY_LETTERS: /^[A-Za-zÁÉÍÓÚÑáéíóúñ]+$/,
     ONLY_LETTERS_AND_SPACES: /^[A-Za-zÁÉÍÓÚÑáéíóúñ ]+$/,
     ONLY_NUMBERS: /^\d+$/,

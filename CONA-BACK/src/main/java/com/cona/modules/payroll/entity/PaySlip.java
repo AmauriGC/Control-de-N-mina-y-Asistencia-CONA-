@@ -29,7 +29,7 @@ public class PaySlip {
     @Column(nullable = false)
     private LocalDate issueDate;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String filePath;
 
     @CreatedDate

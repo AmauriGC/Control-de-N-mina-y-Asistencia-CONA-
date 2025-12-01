@@ -59,10 +59,10 @@ export default function ChangePasswordProfilePage() {
           text: result.message || "Error al cambiar contraseña"
         });
       }
-    } catch {
+    } catch(error) {
       await alertConfig.toastError({
         title: "Error",
-        text: "Ocurrió un error al cambiar la contraseña"
+        text: error.message
       });
     } finally {
       setIsLoading(false);

@@ -27,14 +27,14 @@ public class Holiday {
     @Column(name = "date", nullable = false)
     private LocalDate date;
 
-    @Column(name = "name", nullable = false)
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
     private HolidayType type;
 
-    @Column(name = "description")
+    @Column(name = "description", length = 500)
     private String description;
 
     @CreatedDate

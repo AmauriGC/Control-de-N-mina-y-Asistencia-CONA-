@@ -39,7 +39,7 @@ public class AuthServiceImpl implements AuthService {
         String email = Sanitizer.normalizeEmail(request.email());
         String password = Sanitizer.sanitizeString(request.password());
 
-        if (!Validations.isValidEmail(email)) {
+        if (Validations.isValidEmail(email)) {
             throw new BusinessException("INVALID_EMAIL", "Formato de correo electrónico inválido");
         }
 
@@ -110,11 +110,11 @@ public class AuthServiceImpl implements AuthService {
         String password = Sanitizer.sanitizeString(request.password());
 
         // Validaciones
-        if (!Validations.isValidEmail(email)) {
+        if (Validations.isValidEmail(email)) {
             throw new BusinessException("INVALID_EMAIL", "Formato de correo electrónico inválido");
         }
 
-        if (!Validations.isValidPassword(password)) {
+        if (Validations.isValidPassword(password)) {
             throw new BusinessException("INVALID_PASSWORD", "La contraseña debe tener al menos 8 caracteres, incluir mayúscula, minúscula, dígito y carácter especial");
         }
 
@@ -145,7 +145,7 @@ public class AuthServiceImpl implements AuthService {
         String confirmPassword = Sanitizer.sanitizeString(request.confirmPassword());
 
         // Validaciones
-        if (!Validations.isValidPassword(newPassword)) {
+        if (Validations.isValidPassword(newPassword)) {
             throw new BusinessException("INVALID_NEW_PASSWORD", "La nueva contraseña no cumple con los requisitos de seguridad");
         }
 
@@ -171,7 +171,7 @@ public class AuthServiceImpl implements AuthService {
         String email = Sanitizer.normalizeEmail(request.email());
 
         // Validaciones
-        if (!Validations.isValidEmail(email)) {
+        if (Validations.isValidEmail(email)) {
             throw new BusinessException("INVALID_EMAIL", "Formato de correo electrónico inválido");
         }
 
@@ -200,7 +200,7 @@ public class AuthServiceImpl implements AuthService {
         String confirmPassword = Sanitizer.sanitizeString(request.confirmPassword());
 
         // Validaciones
-        if (!Validations.isValidPassword(newPassword)) {
+        if (Validations.isValidPassword(newPassword)) {
             throw new BusinessException("INVALID_NEW_PASSWORD", "La nueva contraseña no cumple con los requisitos de seguridad");
         }
 

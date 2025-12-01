@@ -4,6 +4,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import com.cona.kernel.utils.Sanitizer;
+import com.cona.kernel.utils.Validations;
+import com.cona.exception.types.BusinessException;
 
 @Service
 public class EmailService {
@@ -18,12 +21,24 @@ public class EmailService {
     }
 
     public void sendEmail(String to, String subject, String body) {
+        // Sanitización básica de entrada
+        String toEmail = Sanitizer.normalizeEmail(to);
+        if (toEmail == null || !toEmail.matches(Validations.EMAIL_REGEX)) {
+            throw new BusinessException("INVALID_EMAIL", "Correo no permitido o inválido");
+        }
+        String safeSubject = Sanitizer.collapseSpaces(subject);
+        String safeBody = Sanitizer.sanitizeString(body);
+
         SimpleMailMessage message = new SimpleMailMessage();
         message.setFrom(fromEmail);
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText(body);
-        mailSender.send(message);
+        message.setTo(toEmail);
+        message.setSubject(safeSubject != null ? safeSubject : "");
+        message.setText(safeBody != null ? safeBody : "");
+        try {
+            mailSender.send(message);
+        } catch (Exception e) {
+            throw new BusinessException("EMAIL_SEND_FAILED", "No se pudo enviar el correo");
+        }
     }
 
     public void sendPasswordResetEmail(String to, String resetUrl) {

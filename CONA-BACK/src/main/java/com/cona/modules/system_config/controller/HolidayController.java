@@ -19,11 +19,14 @@ import com.cona.modules.system_config.enums.HolidayType;
 import com.cona.modules.system_config.service.HolidayService;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
+import org.springframework.validation.annotation.Validated;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/system-config/holidays")
 @RequiredArgsConstructor
+@Validated
 public class HolidayController {
 
     private final HolidayService service;
@@ -36,7 +39,7 @@ public class HolidayController {
 
     @PutMapping("/{id}")
     public ApiResponse<HolidayResponse> update(
-            @PathVariable Long id,
+            @PathVariable @Positive(message = "El ID debe ser positivo") Long id,
             @Valid @RequestBody HolidayRequest request
     ) {
         HolidayResponse response = service.update(id, request);
@@ -44,7 +47,7 @@ public class HolidayController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<HolidayResponse> getById(@PathVariable Long id) {
+    public ApiResponse<HolidayResponse> getById(@PathVariable @Positive(message = "El ID debe ser positivo") Long id) {
         HolidayResponse response = service.getById(id);
         return ApiResponse.success("Día festivo obtenido exitosamente", response);
     }
@@ -60,7 +63,7 @@ public class HolidayController {
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<String> delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable @Positive(message = "El ID debe ser positivo") Long id) {
         service.delete(id);
         return ApiResponse.success("Día festivo eliminado exitosamente");
     }

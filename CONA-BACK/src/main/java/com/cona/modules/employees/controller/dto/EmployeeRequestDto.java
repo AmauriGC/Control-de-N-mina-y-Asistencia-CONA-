@@ -2,6 +2,7 @@ package com.cona.modules.employees.controller.dto;
 
 import com.cona.kernel.utils.Validations;
 import com.cona.modules.employees.enums.ContractType;
+import com.cona.kernel.validation.ChronologicalDates;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -15,6 +16,7 @@ import java.time.LocalDate;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@ChronologicalDates(startField = "contractStartDate", endField = "contractEndDate", message = "La fecha fin de contrato debe ser posterior o igual a la fecha de inicio")
 public class EmployeeRequestDto {
     @NotBlank(message = "El nombre completo es obligatorio")
     @Pattern(regexp = Validations.NAME_REGEX, message = "El nombre completo debe contener solo letras y espacios")
@@ -62,7 +64,7 @@ public class EmployeeRequestDto {
     private String bankName;
 
     @Size(max = 18, message = "La CLABE debe tener 18 caracteres")
-    @Pattern(regexp = "^[0-9]{18}$", message = "La CLABE debe contener exactamente 18 dígitos")
+    @Pattern(regexp = Validations.CLABE_REGEX, message = "La CLABE debe contener exactamente 18 dígitos")
     @NotBlank(message = "La CLABE es obligatoria")
     private String clabe;
 

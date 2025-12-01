@@ -8,8 +8,11 @@ import {alertConfig} from "@/lib/alert-config";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 import {Calendar} from "@/components/ui/calendar";
 import {systemConfigService} from "@/admin/pages/config/service/configService";
+import FieldError from "@/components/criteria/FieldError";
+import FieldHint from "@/components/criteria/FieldHint";
+import {presets} from "@/components/criteria/criteria";
 
-function EmployeeForm({onSave, onClose, editingEmployee}) {
+function EmployeeForm({onSave, onClose, editingEmployee, backendErrors}) {
     const [formData, setFormData] = useState({
         fullName: "",
         email: "",
@@ -58,6 +61,9 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
             bankNameField.onChange({target: {value: editingEmployee.bankName || ""}});
             clabeField.onChange({target: {value: editingEmployee.clabe || ""}});
             contractEndDateField.onChange({target: {value: editingEmployee.contractEndDate || ""}});
+            contractStartDateField.onChange({target: {value: editingEmployee.contractStartDate || ""}});
+            contractTypeField.onChange({target: {value: editingEmployee.contractType || ""}});
+            workScheduleField.onChange({target: {value: editingEmployee.workSchedule ? editingEmployee.workSchedule.toString() : ""}});
             setCurrentStep(1);
         } else {
             setFormData({
@@ -92,7 +98,7 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
         formData.email || "",
         makeRules(
             rulesLib.required("El correo es obligatorio"),
-            rulesLib.email()
+            rulesLib.emailDomain(["cona.com", "utez.edu.mx", "gmail.com"], "Solo se aceptan correos de dominio @cona.com, @utez.edu.mx o @gmail.com")
         )
     );
     const phoneField = useFieldValidation(
@@ -150,6 +156,28 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
         )
     );
 
+    const contractStartDateField = useFieldValidation(
+        formData.contractStartDate || "",
+        makeRules(
+            rulesLib.required("La fecha de inicio del contrato es obligatoria"),
+            rulesLib.isValidDate("Fecha inválida")
+        )
+    );
+
+    const contractTypeField = useFieldValidation(
+        formData.contractType || "",
+        makeRules(
+            rulesLib.required("El tipo de contrato es obligatorio")
+        )
+    );
+
+    const workScheduleField = useFieldValidation(
+        formData.workSchedule || "",
+        makeRules(
+            rulesLib.required("El horario de trabajo es obligatorio")
+        )
+    );
+
     const [submitting, setSubmitting] = useState(false);
 
     // Cargar horarios activos al montar el componente
@@ -176,7 +204,7 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                 return;
             }
         } else if (currentStep === 2) {
-            if (!formData.contractType || !formData.contractStartDate || !formData.contractEndDate || !formData.workSchedule) {
+            if (!contractTypeField.isValid || !contractStartDateField.isValid || !contractEndDateField.isValid || !workScheduleField.isValid) {
                 alertConfig.toastError({
                     title: "Faltan datos en el paso 2",
                     text: "Selecciona tipo de contrato, fechas y horario"
@@ -199,10 +227,10 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
             !positionField.isValid ||
             !rfcField.isValid ||
             !hourlyRateField.isValid ||
-            !formData.contractType ||
-            !formData.contractStartDate ||
-            !formData.contractEndDate ||
-            !formData.workSchedule
+            !contractTypeField.isValid ||
+            !contractStartDateField.isValid ||
+            !contractEndDateField.isValid ||
+            !workScheduleField.isValid
         ) {
             alertConfig.toastError({title: "Faltan datos", text: "Revisa los campos con error"});
             return;
@@ -250,6 +278,10 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                     aria-invalid={fullNameField.showError && !!fullNameField.error}
                                     disabled={submitting}
                                 />
+                                {/* Errores del backend por campo */}
+                                {backendErrors?.getFieldError && (
+                                  <FieldError backendError={backendErrors.getFieldError('fullName')} />
+                                )}
                             </Field>
                             <Field label="Correo Electrónico *" htmlFor="email" error={emailField.error}
                                    showError={emailField.showError}>
@@ -263,6 +295,9 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                     aria-invalid={emailField.showError && !!emailField.error}
                                     disabled={submitting}
                                 />
+                                {backendErrors?.getFieldError && (
+                                  <FieldError backendError={backendErrors.getFieldError('email')} />
+                                )}
                             </Field>
                         </div>
 
@@ -281,6 +316,9 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                     aria-invalid={phoneField.showError && !!phoneField.error}
                                     disabled={submitting}
                                 />
+                                {backendErrors?.getFieldError && (
+                                  <FieldError backendError={backendErrors.getFieldError('phone')} />
+                                )}
                             </Field>
                             <Field label="Puesto *" htmlFor="position" error={positionField.error}
                                    showError={positionField.showError}>
@@ -296,6 +334,9 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                     aria-invalid={positionField.showError && !!positionField.error}
                                     disabled={submitting}
                                 />
+                                {backendErrors?.getFieldError && (
+                                  <FieldError backendError={backendErrors.getFieldError('position')} />
+                                )}
                             </Field>
                         </div>
 
@@ -313,6 +354,9 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                     aria-invalid={rfcField.showError && !!rfcField.error}
                                     disabled={submitting}
                                 />
+                                {backendErrors?.getFieldError && (
+                                  <FieldError backendError={backendErrors.getFieldError('rfc')} />
+                                )}
                             </Field>
                             <Field label="Pago por Hora (MXN) *" htmlFor="hourlyRate" error={hourlyRateField.error}
                                    showError={hourlyRateField.showError}>
@@ -329,6 +373,9 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                     aria-invalid={hourlyRateField.showError && !!hourlyRateField.error}
                                     disabled={submitting}
                                 />
+                                {backendErrors?.getFieldError && (
+                                  <FieldError backendError={backendErrors.getFieldError('hourlyRate')} />
+                                )}
                             </Field>
                         </div>
                     </>
@@ -341,7 +388,10 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                 <Label htmlFor="contractType">Tipo de Contrato *</Label>
                                 <Select
                                     value={formData.contractType}
-                                    onValueChange={(value) => setFormData({...formData, contractType: value})}
+                                    onValueChange={(value) => {
+                                        setFormData({...formData, contractType: value});
+                                        contractTypeField.onChange({target: {value}});
+                                    }}
                                     disabled={submitting}
                                 >
                                     <SelectTrigger>
@@ -358,7 +408,10 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                 <Label htmlFor="workSchedule">Horario de Trabajo *</Label>
                                 <Select
                                     value={formData.workSchedule}
-                                    onValueChange={(value) => setFormData({...formData, workSchedule: value})}
+                                    onValueChange={(value) => {
+                                        setFormData({...formData, workSchedule: value});
+                                        workScheduleField.onChange({target: {value}});
+                                    }}
                                     disabled={submitting}
                                 >
                                     <SelectTrigger>
@@ -372,6 +425,9 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                         ))}
                                     </SelectContent>
                                 </Select>
+                                {backendErrors?.getFieldError && (
+                                  <FieldError backendError={backendErrors.getFieldError('workSchedule')} />
+                                )}
                             </div>
                         </div>
 
@@ -380,10 +436,14 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                 <Label htmlFor="contractStartDate">Fecha Inicio Contrato *</Label>
                                 <Calendar
                                     value={formData.contractStartDate ? new Date(formData.contractStartDate) : null}
-                                    onChange={(d) => setFormData({
-                                        ...formData,
-                                        contractStartDate: d.toISOString().slice(0, 10)
-                                    })}
+                                    onChange={(d) => {
+                                        const value = d ? d.toISOString().slice(0, 10) : "";
+                                        setFormData({
+                                            ...formData,
+                                            contractStartDate: value
+                                        });
+                                        contractStartDateField.onChange({target: {value}});
+                                    }}
                                     disabled={submitting}
                                 />
                             </div>
@@ -404,6 +464,9 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                 />
                                 {contractEndDateField.showError &&
                                     <p className="text-sm text-red-500">{contractEndDateField.error}</p>}
+                                {backendErrors?.getFieldError && (
+                                  <FieldError backendError={backendErrors.getFieldError('contractEndDate')} />
+                                )}
                             </div>
                         </div>
                     </>
@@ -426,6 +489,9 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                     aria-invalid={bankAccountField.showError && !!bankAccountField.error}
                                     disabled={submitting}
                                 />
+                                {backendErrors?.getFieldError && (
+                                  <FieldError backendError={backendErrors.getFieldError('bankAccount')} />
+                                )}
                             </Field>
                             <Field label="Nombre del Banco" htmlFor="bankName" error={bankNameField.error}
                                    showError={bankNameField.showError}>
@@ -441,6 +507,9 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                     aria-invalid={bankNameField.showError && !!bankAccountField.error}
                                     disabled={submitting}
                                 />
+                                {backendErrors?.getFieldError && (
+                                  <FieldError backendError={backendErrors.getFieldError('bankName')} />
+                                )}
                             </Field>
                         </div>
 
@@ -459,6 +528,9 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
                                 aria-invalid={clabeField.showError && !!clabeField.error}
                                 disabled={submitting}
                             />
+                            {backendErrors?.getFieldError && (
+                              <FieldError backendError={backendErrors.getFieldError('clabe')} />
+                            )}
                         </Field>
                     </>
                 );
@@ -519,3 +591,4 @@ function EmployeeForm({onSave, onClose, editingEmployee}) {
 }
 
 export default EmployeeForm;
+

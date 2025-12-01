@@ -13,14 +13,23 @@ import { Calendar, DollarSign, Clock, CheckCircle, XCircle, AlertCircle, Eye } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { alertConfig } from '@/lib/alert-config'
 import { vacationsService } from '../service/vacationsService.js'
+import { useBackendErrors, useFieldValidation, makeRules, rulesLib } from '@/components/criteria/use-validation'
+import FieldError from '@/components/criteria/FieldError'
+import FieldHint from '@/components/criteria/FieldHint'
 
 export default function VacationsEmployee() {
+  const be = useBackendErrors()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [myVacations, setMyVacations] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedVacation, setSelectedVacation] = useState(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const availableDays = 12
+
+  const today = new Date().toISOString().split('T')[0]
+  const startField = useFieldValidation(today, makeRules(rulesLib.isValidDate()), (v) => v)
+  const endField = useFieldValidation(today, makeRules(rulesLib.isValidDate(), rulesLib.dateAfter(startField.value)), (v) => v)
+  const reasonField = useFieldValidation('', makeRules(rulesLib.optional(rulesLib.textGeneral())))
 
   useEffect(() => {
     loadMyRequests()
@@ -39,6 +48,28 @@ export default function VacationsEmployee() {
       })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const submit = async () => {
+    if (!startField.isValid || !endField.isValid) {
+      startField.onBlur(); endField.onBlur();
+      alertConfig.error(startField.error || endField.error)
+      return
+    }
+    const payload = {
+      startDate: startField.value,
+      endDate: endField.value,
+      type: 'VACATION',
+      reason: reasonField.value || ''
+    }
+    const res = await vacationsService.createRequest(payload)
+    if (res.success) {
+      alertConfig.success(res.message)
+      be.reset()
+    } else {
+      be.setFromList(res.errors || [])
+      alertConfig.error(res.message)
     }
   }
 
@@ -206,51 +237,86 @@ export default function VacationsEmployee() {
             <DialogHeader>
               <DialogTitle>Detalles de la Solicitud</DialogTitle>
               <DialogDescription>
-                {selectedVacation.startDate} - {selectedVacation.endDate} • {selectedVacation.totalDays} días
+                {selectedVacation.employeeName ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">{selectedVacation.employeeName}</Badge>
+                    <span className="text-muted-foreground">•</span>
+                    <span className="text-muted-foreground">ID #{selectedVacation.id}</span>
+                  </span>
+                ) : (
+                  `${selectedVacation.startDate} - ${selectedVacation.endDate} • ${selectedVacation.totalDays} días`
+                )}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Tipo de solicitud</p>
-                <div className="text-sm bg-gray-50 p-3 rounded-md">
-                  {selectedVacation.type === 'VACATION' ? 'Vacaciones' : 
-                   selectedVacation.type === 'SICK_LEAVE' ? 'Incapacidad Médica' : 
-                   'Permiso Personal'}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 rounded-md border bg-muted/10">
+                  <p className="text-xs text-muted-foreground">Rango de fechas</p>
+                  <div className="mt-1 flex items-center gap-2 text-sm">
+                    <Calendar className="h-4 w-4 text-primary" />
+                    <span className="font-medium">{selectedVacation.startDate}</span>
+                    <span className="text-muted-foreground">→</span>
+                    <span>{selectedVacation.endDate}</span>
+                  </div>
+                </div>
+                <div className="p-3 rounded-md border bg-muted/10">
+                  <p className="text-xs text-muted-foreground">Días solicitados</p>
+                  <div className="mt-1 text-sm font-semibold">{selectedVacation.totalDays} días</div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Motivo de la solicitud</p>
-                <div className="text-sm bg-gray-50 p-3 rounded-md">
-                  {selectedVacation.reason || 'Sin motivo especificado'}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3 rounded-md border bg-muted/10">
+                  <p className="text-xs text-muted-foreground">Tipo de solicitud</p>
+                  <div className="mt-1">
+                    <Badge variant="outline" className="w-fit text-xs">
+                      {selectedVacation.type === 'VACATION' ? 'Vacaciones' :
+                       selectedVacation.type === 'SICK_LEAVE' ? 'Incapacidad Médica' :
+                       'Permiso Personal'}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="p-3 rounded-md border bg-muted/10">
+                  <p className="text-xs text-muted-foreground">Estado</p>
+                  <div className="mt-1">
+                    <Badge variant={selectedVacation.status === 'APPROVED' ? 'default' : selectedVacation.status === 'REJECTED' ? 'destructive' : 'secondary'} className="w-fit text-xs">
+                      {selectedVacation.status === 'PENDING' && <Clock className="h-3 w-3 mr-1" />}
+                      {selectedVacation.status === 'APPROVED' && <CheckCircle className="h-3 w-3 mr-1" />}
+                      {selectedVacation.status === 'REJECTED' && <XCircle className="h-3 w-3 mr-1" />}
+                      {selectedVacation.status === 'PENDING' ? 'Pendiente' : selectedVacation.status === 'APPROVED' ? 'Aprobado' : 'Rechazado'}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <p className="text-sm font-medium">Estado</p>
-                <Badge variant={selectedVacation.status === 'APPROVED' ? 'default' : selectedVacation.status === 'REJECTED' ? 'destructive' : 'secondary'} className="w-fit">
-                  {selectedVacation.status === 'PENDING' && <Clock className="h-3 w-3 mr-1" />}
-                  {selectedVacation.status === 'APPROVED' && <CheckCircle className="h-3 w-3 mr-1" />}
-                  {selectedVacation.status === 'REJECTED' && <XCircle className="h-3 w-3 mr-1" />}
-                  {selectedVacation.status === 'PENDING' ? 'Pendiente' : selectedVacation.status === 'APPROVED' ? 'Aprobado' : 'Rechazado'}
-                </Badge>
+
+              <div className="p-3 rounded-md border bg-muted/10">
+                <p className="text-xs text-muted-foreground">Motivo de la solicitud</p>
+                <div className="mt-1 text-sm">
+                  {selectedVacation.reason ? (
+                    <p className="text-muted-foreground">{selectedVacation.reason}</p>
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic">Sin motivo especificado</span>
+                  )}
+                </div>
               </div>
+
               {selectedVacation.vacationPay && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Pago vacacional</p>
-                  <div className="text-sm bg-green-50 p-3 rounded-md">
+                <div className="p-3 rounded-md border bg-green-50">
+                  <p className="text-xs text-muted-foreground">Pago vacacional</p>
+                  <div className="mt-1 text-sm font-semibold text-primary">
                     ${selectedVacation.vacationPay.toLocaleString()}
                   </div>
                 </div>
               )}
+
               {selectedVacation.reviewComments && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Comentarios del administrador</p>
-                  <div className="text-sm bg-blue-50 p-3 rounded-md">
-                    {selectedVacation.reviewComments}
-                  </div>
+                <div className="p-3 rounded-md border bg-blue-50">
+                  <p className="text-xs text-muted-foreground">Comentarios del administrador</p>
+                  <div className="mt-1 text-sm">{selectedVacation.reviewComments}</div>
                 </div>
               )}
             </div>
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
                 Cerrar
               </Button>
@@ -270,6 +336,15 @@ function VacationRequestForm({ availableDays, weeklySalary, onClose, loadMyReque
     reason: '' 
   })
   const [submitting, setSubmitting] = useState(false)
+  const be = useBackendErrors()
+  const today = new Date().toISOString().split('T')[0]
+  const startField = useFieldValidation(today, makeRules(rulesLib.isValidDate()), (v) => v)
+  const endField = useFieldValidation(today, makeRules(rulesLib.isValidDate(), rulesLib.dateAfter(startField.value)), (v) => v)
+  const reasonField = useFieldValidation('', makeRules(
+    rulesLib.required('El motivo es obligatorio'),
+    rulesLib.textGeneral('Caracteres no permitidos'),
+    rulesLib.maxLength(500, 'Máximo 500 caracteres')
+  ))
 
   const calculateDays = (start, end) => {
     if (!start || !end) return 0
@@ -301,6 +376,11 @@ function VacationRequestForm({ availableDays, weeklySalary, onClose, loadMyReque
       await alertConfig.toastError({ title: 'Rango inválido', text: 'La fecha de fin debe ser posterior a la de inicio' })
       return
     }
+    if (!reasonField.isValid || reasonField.value.trim().length === 0) {
+      reasonField.onBlur()
+      await alertConfig.toastError({ title: 'Motivo inválido', text: reasonField.error || 'El motivo es obligatorio' })
+      return
+    }
 
     try {
       setSubmitting(true)
@@ -310,22 +390,17 @@ function VacationRequestForm({ availableDays, weeklySalary, onClose, loadMyReque
         type: formData.type,
         reason: formData.reason
       }
-      
-      await vacationsService.createRequest(requestData)
-      await alertConfig.toastSuccess({ 
-        title: 'Solicitud enviada', 
-        text: `Tu solicitud de ${totalDays} días ha sido enviada para aprobación` 
-      })
-      
-      // Reload the requests list
-      await loadMyRequests()
-      onClose()
+      const res = await vacationsService.createRequest(requestData)
+      if (res.success) {
+        await alertConfig.toastSuccess({ title: 'Solicitud enviada', text: res.message })
+        await loadMyRequests()
+        onClose()
+      } else {
+        be.setFromList(res.errors || res.data || [])
+        await alertConfig.toastError({ title: 'Error', text: res.message })
+      }
     } catch (error) {
-      console.error('Error creating request:', error)
-      await alertConfig.toastError({ 
-        title: 'Error', 
-        text: error.message || 'No se pudo crear la solicitud' 
-      })
+      await alertConfig.toastError({ title: 'Error', text: error.message })
     } finally {
       setSubmitting(false)
     }
@@ -357,7 +432,9 @@ function VacationRequestForm({ availableDays, weeklySalary, onClose, loadMyReque
               value={formData.startDate} 
               onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} 
               min={new Date().toISOString().split('T')[0]} 
+              aria-invalid={startField.showError && !!startField.error}
             />
+            {startField.showError && (<FieldError error={startField.error} backendError={be.getFieldError('startDate')} />)}
           </div>
           <div className="space-y-2">
             <Label htmlFor="endDate">Fecha de Fin *</Label>
@@ -367,23 +444,28 @@ function VacationRequestForm({ availableDays, weeklySalary, onClose, loadMyReque
               value={formData.endDate} 
               onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} 
               min={formData.startDate || new Date().toISOString().split('T')[0]} 
+              aria-invalid={endField.showError && !!endField.error}
             />
+            {endField.showError && (<FieldError error={endField.error} backendError={be.getFieldError('endDate')} />)}
           </div>
         </div>
         
         <div className="space-y-2">
-          <Label htmlFor="reason">Motivo (opcional)</Label>
-          <Textarea 
+          <Label htmlFor="reason">Motivo *</Label>
+          <Textarea
             id="reason"
             placeholder="Describe el motivo de tu solicitud..."
-            value={formData.reason}
-            onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+            value={reasonField.rawValue}
+            onChange={(e) => {
+              reasonField.onChange(e);
+              setFormData({ ...formData, reason: e.target.value });
+            }}
+            onBlur={reasonField.onBlur}
             rows={3}
-            maxLength={500}
+            aria-invalid={reasonField.showError && !!reasonField.error}
           />
-          <div className="text-xs text-muted-foreground text-right">
-            {formData.reason.length}/500
-          </div>
+          <FieldError error={reasonField.error} backendError={be.getFieldError('reason')} />
+          <FieldHint value={reasonField.rawValue} max={500} />
         </div>
       </div>
       {totalDays > 0 && (
@@ -409,7 +491,7 @@ function VacationRequestForm({ availableDays, weeklySalary, onClose, loadMyReque
         <Button type="button" variant="outline" onClick={onClose} disabled={submitting}>Cancelar</Button>
         <Button 
           type="submit" 
-          disabled={submitting || totalDays < 1 || (formData.type === 'VACATION' && totalDays > availableDays)}
+          disabled={submitting || totalDays < 1 || (formData.type === 'VACATION' && totalDays > availableDays) || !reasonField.isValid || reasonField.value.trim().length === 0}
         >
           {submitting ? 'Enviando...' : 'Enviar Solicitud'}
         </Button>

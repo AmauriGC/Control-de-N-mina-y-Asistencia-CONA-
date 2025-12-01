@@ -15,9 +15,11 @@ export const vacationsService = {
     try {
       const userId = getUserId();
       const response = await axiosClient.post(`/leave-requests/user/${userId}`, requestData);
-      return response;
+      return { success: response.success, data: response.data, message: response.message }
     } catch (error) {
-      throw error;
+      const backendMsg = error.response?.data?.message
+      const backendErrors = error.response?.data?.data
+      return { success: false, message: backendMsg || error.message, errors: Array.isArray(backendErrors) ? backendErrors : [] }
     }
   },
 
@@ -26,9 +28,11 @@ export const vacationsService = {
     try {
       const userId = getUserId();
       const response = await axiosClient.get(`/leave-requests/user/${userId}/requests`);
-      return response;
+      return { success: response.success, data: response.data, message: response.message }
     } catch (error) {
-      throw error;
+      const backendMsg = error.response?.data?.message
+      const backendErrors = error.response?.data?.data
+      return { success: false, message: backendMsg || error.message, errors: Array.isArray(backendErrors) ? backendErrors : [] }
     }
   },
 
@@ -36,9 +40,11 @@ export const vacationsService = {
   getById: async (id) => {
     try {
       const response = await axiosClient.get(`/leave-requests/${id}`);
-      return response;
+      return { success: response.success, data: response.data, message: response.message }
     } catch (error) {
-      throw error;
+      const backendMsg = error.response?.data?.message
+      const backendErrors = error.response?.data?.data
+      return { success: false, message: backendMsg || error.message, errors: Array.isArray(backendErrors) ? backendErrors : [] }
     }
   }
 };

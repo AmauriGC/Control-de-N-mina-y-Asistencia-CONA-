@@ -13,6 +13,7 @@ import com.cona.modules.leaves.enums.LeaveType;
 import com.cona.modules.leaves.repository.LeaveRepository;
 import com.cona.modules.leaves.repository.LeaveRequestRepository;
 import com.cona.modules.leaves.service.LeaveRequestService;
+import com.cona.kernel.utils.Sanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -46,12 +47,15 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
         
         validateLeaveRequest(dto, employee);
         
+        // Sanitización de razón
+        String sanitizedReason = Sanitizer.sanitizeComment(dto.getReason());
+
         LeaveRequest leaveRequest = new LeaveRequest();
         leaveRequest.setEmployee(employee);
         leaveRequest.setStartDate(dto.getStartDate());
         leaveRequest.setEndDate(dto.getEndDate());
         leaveRequest.setType(dto.getType());
-        leaveRequest.setReason(dto.getReason());
+        leaveRequest.setReason(sanitizedReason);
         leaveRequest.setStatus(LeaveStatus.PENDING);
         
         LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
@@ -63,8 +67,10 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
     public Page<LeaveRequestResponseDto> getAllRequests(int page, int size, String status, String employeeName) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         LeaveStatus leaveStatus = status != null && !status.equals("all") ? LeaveStatus.valueOf(status.toUpperCase()) : null;
-        
-        Page<LeaveRequest> requests = leaveRequestRepository.findByFilters(leaveStatus, employeeName, pageable);
+        // Normalizar nombre para búsqueda
+        String normalizedName = employeeName != null ? Sanitizer.collapseSpaces(employeeName) : null;
+
+        Page<LeaveRequest> requests = leaveRequestRepository.findByFilters(leaveStatus, normalizedName, pageable);
         return requests.map(this::mapToResponseDto);
     }
     
@@ -108,7 +114,7 @@ public class LeaveRequestServiceImpl implements LeaveRequestService {
         leave.setEndDate(request.getEndDate());
         leave.setType(request.getType());
         leave.setApprovedBy(reviewerId);
-        leave.setAdminComments(reviewDto.getComments());
+        leave.setAdminComments(Sanitizer.sanitizeComment(reviewDto.getComments()));
         leave.setApprovedAt(LocalDateTime.now());
         
         leaveRepository.save(leave);

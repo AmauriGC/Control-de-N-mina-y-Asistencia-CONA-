@@ -6,11 +6,13 @@ import com.cona.modules.system_config.controller.dto.PayrollConfigResponse;
 import com.cona.modules.system_config.service.PayrollConfigService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/system-config/payroll-config")
 @RequiredArgsConstructor
+@Validated
 public class PayrollConfigController {
 
     private final PayrollConfigService service;
