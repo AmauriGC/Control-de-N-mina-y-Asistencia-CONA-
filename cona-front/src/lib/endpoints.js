@@ -76,4 +76,12 @@ export const API_ENDPOINTS = {
         GET_DETAIL: "/api/payroll/employee/:employeeId/detail",
         GET_LATEST: "/api/payroll/employee/:employeeId/latest",
     },
-};
+    DASHBOARD: {
+        TODAY: "/dashboard/today",
+        PENDING_JUSTIFICATIONS: "/dashboard/justifications/pending",
+        CONTRACT_ALERTS: "/dashboard/contracts/alerts",
+        WEEKLY_ATTENDANCE: "/dashboard/weekly-attendance",
+        MONTHLY_OVERTIME: "/dashboard/monthly-overtime",
+        WEEKLY_PAYROLL: "/dashboard/weekly-payroll",
+    }
+}

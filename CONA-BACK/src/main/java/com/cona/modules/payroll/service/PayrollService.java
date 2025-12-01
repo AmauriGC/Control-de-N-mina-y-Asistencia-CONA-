@@ -68,6 +68,9 @@ public class PayrollService {
         // ASEGURAR que todos los días tengan registro ANTES de consultar
         ensureAllDaysHaveAttendanceForEmployee(employee, periodStart, periodEnd);
 
+        // ASEGURAR que todos los días tengan registro ANTES de consultar
+        ensureAllDaysHaveAttendanceForEmployee(employee, periodStart, periodEnd);
+
         // Obtener todas las asistencias del empleado en el período (últimos 15 días)
         List<Attendance> attendances = attendanceRepository
                 .findByEmployeeIdAndDateBetweenOrderByDateDesc(employeeId, periodStart, periodEnd);

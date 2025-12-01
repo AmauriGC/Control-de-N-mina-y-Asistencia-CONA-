@@ -45,4 +45,33 @@ public interface AttendanceRepository extends JpaRepository<Attendance, Long> {
     
     @Query("SELECT a FROM Attendance a WHERE a.employee.id = :employeeId AND a.date = :date")
     List<Attendance> findByEmployeeIdAndDate(@Param("employeeId") Long employeeId, @Param("date") LocalDate date);
+
+    @Query("SELECT COUNT(a) FROM Attendance a WHERE a.date = :date AND a.status = 'PRESENT'")
+    long countPresentByDate(@Param("date") LocalDate date);
+
+    @Query("SELECT e FROM Employee e WHERE e.contractEndDate IS NOT NULL AND e.contractEndDate BETWEEN CURRENT_DATE AND :limitDate")
+    List<Employee> findContractsExpiringSoon(@Param("limitDate") LocalDate limitDate);
+
+    @Query("""
+    SELECT 
+        a.date AS date,
+        SUM(CASE WHEN a.status = com.cona.modules.attendance.enums.AttendanceStatus.PRESENT THEN 1 ELSE 0 END) AS presentCount,
+        SUM(CASE WHEN a.status = com.cona.modules.attendance.enums.AttendanceStatus.LATE THEN 1 ELSE 0 END) AS lateCount,
+        SUM(CASE WHEN a.status IN (
+            com.cona.modules.attendance.enums.AttendanceStatus.ABSENT,
+            com.cona.modules.attendance.enums.AttendanceStatus.JUSTIFIED_ABSENCE,
+            com.cona.modules.attendance.enums.AttendanceStatus.JUSTIFICATION_REJECTED
+        ) THEN 1 ELSE 0 END) AS absentCount
+    FROM Attendance a
+    WHERE a.date BETWEEN :start AND :end
+    GROUP BY a.date
+    ORDER BY a.date
+""")
+    List<Object[]> getWeeklyAttendanceRaw(
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end
+    );
+
+
+    List<Attendance> findByDateBetween(LocalDate startMonth, LocalDate endMonth);
 }

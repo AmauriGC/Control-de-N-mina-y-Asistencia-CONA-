@@ -17,24 +17,26 @@ import {
 import { Link } from "react-router-dom";
 import { useAuth } from "@/auth/context/AuthContext";
 import { useEffect, useState } from "react";
-import { attendanceService } from "@/employee/service/attendanceService";
+import { dashboardService } from "./service/dashboardService";
 
-const attendanceData = [
-  { day: "Lun", present: 45, late: 5, absent: 2 },
-  { day: "Mar", present: 47, late: 3, absent: 2 },
-  { day: "Mié", present: 46, late: 4, absent: 2 },
-  { day: "Jue", present: 48, late: 2, absent: 2 },
-  { day: "Vie", present: 44, late: 6, absent: 2 },
+
+// fallback data in case API returns nothing (kept similar to previous look)
+const FALLBACK_ATTENDANCE = [
+    { day: "Lun", present: 45, late: 5, absent: 2 },
+    { day: "Mar", present: 47, late: 3, absent: 2 },
+    { day: "Mié", present: 46, late: 4, absent: 2 },
+    { day: "Jue", present: 48, late: 2, absent: 2 },
+    { day: "Vie", present: 44, late: 6, absent: 2 },
 ];
 
-const overtimeData = [
-  { week: "Sem 1", hours: 24 },
-  { week: "Sem 2", hours: 32 },
-  { week: "Sem 3", hours: 28 },
-  { week: "Sem 4", hours: 36 },
+const FALLBACK_OVERTIME = [
+    { week: "Sem 1", hours: 24 },
+    { week: "Sem 2", hours: 32 },
+    { week: "Sem 3", hours: 28 },
+    { week: "Sem 4", hours: 36 },
 ];
 
-const pendingJustifications = [
+/*const pendingJustifications = [
   { id: "1", employee: "María Empleada", date: "2024-01-15", daysLeft: 1 },
   { id: "2", employee: "Juan Pérez", date: "2024-01-16", daysLeft: 0 },
   { id: "3", employee: "Ana García", date: "2024-01-14", daysLeft: 2 },
@@ -43,24 +45,83 @@ const pendingJustifications = [
 const contractAlerts = [
   { id: "1", employee: "Carlos Martínez", endDate: "2024-02-15", daysLeft: 15, priority: "high" },
   { id: "2", employee: "Laura Rodríguez", endDate: "2024-02-28", daysLeft: 28, priority: "medium" },
-];
-
+];*/
 export default function DashboardAdmin() {
   const { user } = useAuth();
+
   const [todayCounts, setTodayCounts] = useState({ presentCount: 0, activeEmployeesCount: 0 });
   const [loadingCounts, setLoadingCounts] = useState(true);
 
+  const [pendingJustifications, setJustifications] = useState([]);
+  const [contractAlerts, setContracts] = useState([]);
+
+  const [attendanceData, setAttendanceData] = useState(FALLBACK_ATTENDANCE);
+  const [overtimeData, setOvertimeData] = useState(FALLBACK_OVERTIME);
+
+  // --- Cargar datos de hoy ---
   useEffect(() => {
-    const load = async () => {
-      setLoadingCounts(true);
-      const res = await attendanceService.getTodayCounts();
-      if (res.success) {
-        setTodayCounts(res.data || { presentCount: 0, activeEmployeesCount: 0 });
+  const loadTodayCounts = async () => {
+    setLoadingCounts(true);
+    try {
+      const res = await dashboardService.getTodayCounts();
+      const data = res?.data ?? res;
+
+      if (data) {
+        setTodayCounts({
+          presentCount: data.presentToday ?? 0,
+          activeEmployeesCount: data.activeEmployees ?? 0
+        });
+      } else {
+        setTodayCounts({ presentCount: 0, activeEmployeesCount: 0 });
       }
+    } catch (error) {
+      console.error("Error fetching today counts:", error);
+      setTodayCounts({ presentCount: 0, activeEmployeesCount: 0 });
+    } finally {
       setLoadingCounts(false);
+    }
+  };
+
+  loadTodayCounts();
+}, []);
+
+  // --- Cargar resto de datos del dashboard ---
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        // Justificaciones pendientes
+        const pendingRes = await dashboardService.getPendingJustifications();
+        const pendingList = pendingRes?.data ?? pendingRes ?? [];
+        setJustifications(Array.isArray(pendingList) ? pendingList : []);
+
+        // Contratos por vencer
+        const contractsRes = await dashboardService.getContractAlerts();
+        const contractsList = contractsRes?.data ?? contractsRes ?? [];
+        setContracts(Array.isArray(contractsList) ? contractsList : []);
+
+        // Asistencia semanal
+        const weeklyRes = await dashboardService.getWeeklyAttendance();
+        const weeklyList = Array.isArray(weeklyRes) ? weeklyRes : weeklyRes?.data ?? FALLBACK_ATTENDANCE;
+        setAttendanceData(weeklyList);
+
+        // Horas extra mensuales
+        const overtimeRes = await dashboardService.getMonthlyOvertime();
+        const overtimeList = Array.isArray(overtimeRes) ? overtimeRes : overtimeRes?.data ?? FALLBACK_OVERTIME;
+        setOvertimeData(overtimeList);
+
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        setAttendanceData(FALLBACK_ATTENDANCE);
+        setOvertimeData(FALLBACK_OVERTIME);
+        setJustifications([]);
+        setContracts([]);
+      }
     };
-    load();
+
+    loadDashboardData();
   }, []);
+
+
   return (
     <div className="p-8 space-y-8 min-h-screen">
       <div>
@@ -74,8 +135,10 @@ export default function DashboardAdmin() {
             <CardTitle className="text-sm font-medium">Empleados Activos</CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">52</div>
+          <CardContent> 
+            <div className="text-3xl font-bold">
+              {loadingCounts ? '-' : `${todayCounts.activeEmployeesCount}`}
+              </div>
             <p className="text-xs text-muted-foreground mt-1">+2 desde el mes pasado</p>
           </CardContent>
         </Card>
@@ -114,7 +177,8 @@ export default function DashboardAdmin() {
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">5</div>
+            <div className="text-3xl font-bold">
+4            </div>
             <p className="text-xs text-muted-foreground mt-1">3 justificaciones, 2 contratos</p>
           </CardContent>
         </Card>

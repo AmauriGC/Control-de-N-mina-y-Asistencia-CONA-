@@ -30,4 +30,10 @@ public interface PayrollRepository extends JpaRepository<Payroll, Long> {
     @Query("SELECT p FROM Payroll p WHERE p.periodStart >= :startDate AND p.periodEnd <= :endDate")
     List<Payroll> findByPeriodRange(@Param("startDate") LocalDate startDate, 
                                    @Param("endDate") LocalDate endDate);
+
+
+    @Query("SELECT COALESCE(SUM(p.totalSalary), 0) FROM Payroll p WHERE p.periodStart >= :startDate AND p.periodEnd <= :endDate")
+    Double getWeeklyTotalPayroll(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+
 }
