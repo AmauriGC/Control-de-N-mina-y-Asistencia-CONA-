@@ -68,9 +68,6 @@ public class PayrollService {
         // ASEGURAR que todos los días tengan registro ANTES de consultar
         ensureAllDaysHaveAttendanceForEmployee(employee, periodStart, periodEnd);
 
-        // ASEGURAR que todos los días tengan registro ANTES de consultar
-        ensureAllDaysHaveAttendanceForEmployee(employee, periodStart, periodEnd);
-
         // Obtener todas las asistencias del empleado en el período (últimos 15 días)
         List<Attendance> attendances = attendanceRepository
                 .findByEmployeeIdAndDateBetweenOrderByDateDesc(employeeId, periodStart, periodEnd);
@@ -305,12 +302,23 @@ public class PayrollService {
         
         log.info("Found {} unique dates in existing attendances", attendanceMap.size());
         
-        // Generar todas las fechas del período
-        List<LocalDate> allDates = periodStart.datesUntil(periodEnd.plusDays(1))
-                .collect(Collectors.toList());
-        
+        // Ajustar inicio efectivo a la fecha de inicio de contrato
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new BusinessException("EMPLOYEE_NOT_FOUND", "Empleado no encontrado"));
+        LocalDate effectiveStart = employee.getContractStartDate() != null && periodStart.isBefore(employee.getContractStartDate())
+            ? employee.getContractStartDate() : periodStart;
+
+        // Si el inicio efectivo es posterior al fin del periodo, no hay nada que generar
+        if (effectiveStart.isAfter(periodEnd)) {
+            log.info("Effective start {} is after period end {}; skipping attendance generation.", effectiveStart, periodEnd);
+            return existingAttendances.stream()
+                .sorted((a, b) -> b.getDate().compareTo(a.getDate()))
+                .collect(Collectors.toList());
+        }
+
+        // Generar todas las fechas del período
+        List<LocalDate> allDates = effectiveStart.datesUntil(periodEnd.plusDays(1))
+                .collect(java.util.stream.Collectors.toList());
 
         // Crear registros para todos los días (incluyendo domingos como no laborales)
         for (LocalDate date : allDates) {
@@ -318,26 +326,39 @@ public class PayrollService {
             if (date.getDayOfWeek().getValue() == 6) {
                 continue;
             }
-            
+
             if (!attendanceMap.containsKey(date)) {
-                log.info("Creating ABSENT record for missing date: {}", date);
-                
+                log.info("Creating record for missing date: {}", date);
+
                 // Verificar si ya existe un registro para esta fecha en la base de datos
                 List<Attendance> existingForDate = attendanceRepository
                         .findByEmployeeIdAndDate(employeeId, date);
-                
+
+                Attendance record;
                 if (existingForDate.isEmpty()) {
-                    Attendance absentRecord = new Attendance();
-                    absentRecord.setEmployee(employee);
-                    absentRecord.setDate(date);
-                    absentRecord.setStatus(AttendanceStatus.ABSENT);
-                    absentRecord.setHoursWorked(0.0);
-                    absentRecord.setDailySalary(BigDecimal.ZERO);
-                    absentRecord.setComments(Sanitizer.sanitizeComment("Falta generada automáticamente"));
+                    record = new Attendance();
+                    record.setEmployee(employee);
+                    record.setDate(date);
+                    // Validar si es festivo
+                    Optional<Holiday> holidayOpt = holidayRepository.findByDate(date);
+                    if (holidayOpt.isPresent()) {
+                        record.setStatus(AttendanceStatus.HOLIDAY);
+                        record.setDailySalary(BigDecimal.ZERO);
+                        record.setComments(Sanitizer.sanitizeComment("Día festivo - " + holidayOpt.get().getName()));
+                    } else if (date.getDayOfWeek().getValue() == 7) {
+                        record.setStatus(AttendanceStatus.NON_WORKING_DAY);
+                        record.setDailySalary(BigDecimal.ZERO);
+                        record.setComments(Sanitizer.sanitizeComment("Día no laboral - Domingo"));
+                    } else {
+                        record.setStatus(AttendanceStatus.ABSENT);
+                        record.setHoursWorked(0.0);
+                        record.setDailySalary(BigDecimal.ZERO);
+                        record.setComments(Sanitizer.sanitizeComment("Falta generada automáticamente"));
+                    }
 
                     // Guardar el registro
-                    absentRecord = attendanceRepository.save(absentRecord);
-                    attendanceMap.put(date, absentRecord);
+                    record = attendanceRepository.save(record);
+                    attendanceMap.put(date, record);
                 } else {
                     // Si ya existe, usar el primero
                     attendanceMap.put(date, existingForDate.get(0));
@@ -395,7 +416,9 @@ public class PayrollService {
 
 
     private void ensureAllDaysHaveAttendanceForEmployee(Employee employee, LocalDate startDate, LocalDate endDate) {
-        LocalDate currentDate = startDate;
+        LocalDate effectiveStart = employee.getContractStartDate() != null && startDate.isBefore(employee.getContractStartDate())
+                ? employee.getContractStartDate() : startDate;
+        LocalDate currentDate = effectiveStart;
         while (!currentDate.isAfter(endDate)) {
             // Saltar solo sábados
             if (currentDate.getDayOfWeek().getValue() != 6) {
@@ -411,15 +434,26 @@ public class PayrollService {
         if (!existing.isEmpty()) {
             return; // Ya existe, no hacer nada
         }
-        // Crear registro ABSENT sanitizando comentario
-        Attendance absentRecord = new Attendance();
-        absentRecord.setEmployee(employee);
-        absentRecord.setDate(date);
-        absentRecord.setStatus(AttendanceStatus.ABSENT);
-        absentRecord.setHoursWorked(0.0);
-        absentRecord.setDailySalary(BigDecimal.ZERO);
-        absentRecord.setComments(Sanitizer.sanitizeComment("Falta generada automáticamente"));
-        attendanceRepository.save(absentRecord);
+        // Crear registro con validación de festivo/día no laboral
+        Attendance record = new Attendance();
+        record.setEmployee(employee);
+        record.setDate(date);
+        Optional<Holiday> holidayOpt = holidayRepository.findByDate(date);
+        if (holidayOpt.isPresent()) {
+            record.setStatus(AttendanceStatus.HOLIDAY);
+            record.setDailySalary(BigDecimal.ZERO);
+            record.setComments(Sanitizer.sanitizeComment("Día festivo - " + holidayOpt.get().getName()));
+        } else if (date.getDayOfWeek().getValue() == 7) {
+            record.setStatus(AttendanceStatus.NON_WORKING_DAY);
+            record.setDailySalary(BigDecimal.ZERO);
+            record.setComments(Sanitizer.sanitizeComment("Día no laboral - Domingo"));
+        } else {
+            record.setStatus(AttendanceStatus.ABSENT);
+            record.setHoursWorked(0.0);
+            record.setDailySalary(BigDecimal.ZERO);
+            record.setComments(Sanitizer.sanitizeComment("Falta generada automáticamente"));
+        }
+        attendanceRepository.save(record);
     }
 
     // Clase interna para cálculos

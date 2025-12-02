@@ -161,10 +161,6 @@ async function obtenerDatos() {
   try {
     // El token se añade automáticamente en el header
     const response = await axiosClient.get('/empleados')
-    
-    if (response.success) {
-      console.log(response.data)
-    }
   } catch (error) {
     console.error(error.message)
   }

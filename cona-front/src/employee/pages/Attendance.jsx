@@ -53,15 +53,12 @@ export default function AttendancePage() {
   useEffect(() => {
     const init = async () => {
       if (!user) {
-        console.log('No user found')
         return
       }
       
-      console.log('Current user:', user)
       
       // Si ya viene employeeId desde el token/usuario, úsalo
       if (user.employeeId) {
-        console.log('Using employeeId from user token:', user.employeeId)
         setEffectiveEmployeeId(user.employeeId)
         await loadAttendanceData(user.employeeId)
         return
@@ -69,16 +66,12 @@ export default function AttendancePage() {
       
       // De lo contrario, obtén el empleado por userId
       try {
-        console.log('Fetching employee by userId:', user.id)
         const res = await employeeService.getByUserId(user.id)
-        console.log('Employee service response:', res)
         
         if (res?.success && res.data?.id) {
-          console.log('Found employee ID:', res.data.id)
           setEffectiveEmployeeId(res.data.id)
           await loadAttendanceData(res.data.id)
         } else {
-          console.error('No employee found for user:', user.id)
           alertConfig.error('No se encontró un empleado asociado a este usuario')
         }
       } catch (e) {
@@ -183,36 +176,6 @@ export default function AttendancePage() {
 
       {effectiveEmployeeId && (
         <>
-          {/* Filtro reactivo por rango */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Filtrar por rango</CardTitle>
-              <CardDescription>Selecciona un rango de fechas válido</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className="text-sm">Fecha inicio</label>
-                <Input type="date" value={startDateField.rawValue} onChange={startDateField.onChange} onBlur={startDateField.onBlur} />
-                {startDateField.showError && (
-                  <FieldError error={startDateField.error} backendError={be.getFieldError('startDate')} />
-                )}
-              </div>
-              <div>
-                <label className="text-sm">Fecha fin</label>
-                <Input type="date" value={endDateField.rawValue} onChange={endDateField.onChange} onBlur={endDateField.onBlur} />
-                {endDateField.showError && (
-                  <FieldError error={endDateField.error} backendError={be.getFieldError('endDate')} />
-                )}
-              </div>
-              <div className="flex items-end">
-                <Button onClick={() => loadAttendanceData(effectiveEmployeeId, 0)} variant="default">Aplicar</Button>
-              </div>
-              {be.getGeneralError() && (
-                <div className="md:col-span-3 text-sm text-destructive">{be.getGeneralError()}</div>
-              )}
-            </CardContent>
-          </Card>
-
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">

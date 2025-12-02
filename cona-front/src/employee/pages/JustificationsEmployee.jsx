@@ -41,7 +41,7 @@ export default function JustificationsEmployee() {
         if (res?.success && res.data?.id) empId = res.data.id
       } catch {}
     }
-    if (!empId) return
+    if (!empId) return 
     setResolvedEmployeeId(empId)
 
     // rango: últimos 3 días para ventana de 2 días

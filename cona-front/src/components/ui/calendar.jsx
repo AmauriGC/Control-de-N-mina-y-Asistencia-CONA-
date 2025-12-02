@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { cn } from "@/lib/utils";
+import { cn, parseISODateLocal, toISODateLocalString } from "@/lib/utils";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 function startOfMonth(date) {
@@ -27,16 +27,39 @@ function isSameDay(a, b) {
   return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
+function normalizeLocalDate(d) {
+  if (!d) return null;
+  const nd = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return nd;
+}
+
 function isBetween(date, min, max) {
-  const t = date.getTime();
-  if (min && t < min.getTime()) return false;
-  if (max && t > max.getTime()) return false;
+  const t = normalizeLocalDate(date).getTime();
+  const minT = min ? normalizeLocalDate(min).getTime() : null;
+  const maxT = max ? normalizeLocalDate(max).getTime() : null;
+
+  if (minT !== null && t < minT) return false;
+  if (maxT !== null && t > maxT) return false;
   return true;
 }
 
 export function Calendar({ value, onChange, className, disabled = false, minDate, maxDate, weekStartsOn = 1 }) {
-  const [viewDate, setViewDate] = useState(value || new Date());
+  // Normalize incoming props using shared utils to avoid discrepancies
+  const normalizedValue = useMemo(() => (
+    (value instanceof Date) ? value : (typeof value === 'string' ? parseISODateLocal(value) : null)
+  ), [value]);
+  const normalizedMin = (minDate instanceof Date) ? minDate : (typeof minDate === 'string' ? parseISODateLocal(minDate) : undefined);
+  const normalizedMax = (maxDate instanceof Date) ? maxDate : (typeof maxDate === 'string' ? parseISODateLocal(maxDate) : undefined);
+
+  const [viewDate, setViewDate] = useState(normalizedValue || new Date());
   const today = new Date();
+
+  // Keep viewDate in sync when external value changes (e.g., after selection)
+  React.useEffect(() => {
+    if (normalizedValue && !isSameDay(viewDate, normalizedValue)) {
+      setViewDate(normalizedValue);
+    }
+  }, [normalizedValue]);
 
   const { monthDays, monthLabel } = useMemo(() => {
     const start = startOfMonth(viewDate);
@@ -102,8 +125,8 @@ export function Calendar({ value, onChange, className, disabled = false, minDate
         {monthDays.map((d, i) => {
           const isEmpty = !d;
           const isToday = d && isSameDay(d, today);
-          const selected = d && value && isSameDay(d, value);
-          const permitted = d && isBetween(d, minDate, maxDate);
+          const selected = d && normalizedValue && isSameDay(d, normalizedValue);
+          const permitted = d && isBetween(d, normalizedMin, normalizedMax);
           const isDisabled = disabled || (!isEmpty && !permitted);
 
           return (
@@ -111,7 +134,11 @@ export function Calendar({ value, onChange, className, disabled = false, minDate
               key={i}
               type="button"
               disabled={isEmpty || isDisabled}
-              onClick={() => d && onChange?.(d)}
+              onClick={() => {
+                if (!d) return;
+                // Emit both Date and local ISO string via shared utils
+                onChange?.(d, toISODateLocalString(d));
+              }}
               className={cn(
                 "h-9 w-9 rounded-md text-sm grid place-items-center outline-none transition-colors",
                 isEmpty && "opacity-0 pointer-events-none",

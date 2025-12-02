@@ -195,7 +195,9 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .orElseThrow(() -> new BusinessException("EMPLOYEE_NOT_FOUND", "Empleado no encontrado con ID: " + employeeId));
 
         LocalDate endDate = LocalDate.now();
-        LocalDate startDate = endDate.minusDays(30);
+        // Iniciar desde la fecha de inicio de contrato en lugar de un mes antes
+        LocalDate startDate = employee.getContractStartDate() != null ? employee.getContractStartDate() : endDate;
+        // Asegurar el rango desde inicio de contrato hasta hoy
         ensureAttendanceRange(employee, startDate, endDate);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "date"));
@@ -209,10 +211,13 @@ public class AttendanceServiceImpl implements AttendanceService {
     public List<AttendanceResponseDto> getEmployeeAttendanceByDateRange(Long employeeId, LocalDate startDate, LocalDate endDate) {
         Employee employee = employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new BusinessException("EMPLOYEE_NOT_FOUND", "Empleado no encontrado con ID: " + employeeId));
-        ensureAttendanceRange(employee, startDate, endDate);
+        // Limitar el inicio al contrato del empleado
+        LocalDate effectiveStart = employee.getContractStartDate() != null && startDate.isBefore(employee.getContractStartDate())
+                ? employee.getContractStartDate() : startDate;
+        ensureAttendanceRange(employee, effectiveStart, endDate);
 
         List<Attendance> attendances = attendanceRepository.findByEmployeeAndDateBetweenOrderByDateDesc(
-                employee, startDate, endDate);
+                employee, effectiveStart, endDate);
         return attendances.stream()
                 .map(this::mapToResponseDto)
                 .toList();
@@ -251,7 +256,10 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     private void ensureAttendanceRange(Employee employee, LocalDate startDate, LocalDate endDate) {
-        LocalDate date = startDate;
+        // Ajustar inicio para no crear registros antes del inicio de contrato
+        LocalDate effectiveStart = employee.getContractStartDate() != null && startDate.isBefore(employee.getContractStartDate())
+                ? employee.getContractStartDate() : startDate;
+        LocalDate date = effectiveStart;
         while (!date.isAfter(endDate)) {
             ensureAttendanceForDate(employee, date);
             date = date.plusDays(1);
@@ -332,3 +340,4 @@ public class AttendanceServiceImpl implements AttendanceService {
         return dto;
     }
 }
+

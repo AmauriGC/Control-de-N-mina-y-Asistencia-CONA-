@@ -11,9 +11,7 @@ import com.cona.modules.justifications.enums.DocumentType;
 import com.cona.modules.justifications.enums.JustificationStatus;
 import com.cona.modules.justifications.entity.Justification;
 import com.cona.modules.justifications.repository.JustificationRepository;
-import com.cona.kernel.utils.Sanitizer;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -60,28 +58,12 @@ public class JustificationServiceImpl implements JustificationService {
             throw new BusinessException("JUSTIFICATION_ALREADY_EXISTS", "Ya existe una solicitud para esta falta");
         });
 
-        // Sanitizar razón
-        String sanitizedReason = Sanitizer.sanitizeComment(reason);
-
         String storedPath = null;
         if (file != null && !file.isEmpty()) {
-            // Validar tamaño y tipo MIME
-            if (file.getSize() > (5 * 1024 * 1024)) { // 5MB
-                throw new BusinessException("FILE_TOO_LARGE", "El archivo excede el tamaño máximo permitido (5MB)");
-            }
-            String contentType = file.getContentType();
-            if (contentType == null || !(contentType.equals(MediaType.APPLICATION_PDF_VALUE)
-                    || contentType.equals(MediaType.IMAGE_JPEG_VALUE)
-                    || contentType.equals(MediaType.IMAGE_PNG_VALUE))) {
-                throw new BusinessException("FILE_TYPE_NOT_ALLOWED", "Tipo de archivo no permitido. Solo PDF/JPG/PNG");
-            }
             try {
                 Path root = storageRoot();
                 Files.createDirectories(root);
-                // Sanitizar nombre de archivo evitando path traversal
-                String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
-                String safeName = originalName.replaceAll("[\\\\/]+", "_").replaceAll("[^a-zA-Z0-9._-]", "");
-                String filename = employee.getId() + "_" + attendance.getId() + "_" + System.currentTimeMillis() + "_" + safeName;
+                String filename = employee.getId() + "_" + attendance.getId() + "_" + System.currentTimeMillis() + "_" + file.getOriginalFilename();
                 Path target = root.resolve(filename);
                 Files.write(target, file.getBytes());
                 storedPath = target.toString();
@@ -94,7 +76,7 @@ public class JustificationServiceImpl implements JustificationService {
         j.setEmployee(employee);
         j.setAttendance(attendance);
         j.setDate(attendance.getDate());
-        j.setReason(sanitizedReason);
+        j.setReason(reason);
         j.setDocumentType(documentType);
         j.setDocumentPath(storedPath);
         j.setStatus(JustificationStatus.PENDING);
@@ -122,7 +104,7 @@ public class JustificationServiceImpl implements JustificationService {
                 .orElseThrow(() -> new BusinessException("JUSTIFICATION_NOT_FOUND", "Justificación no encontrada"));
         j.setStatus(JustificationStatus.APPROVED);
         if (adminComments != null && !adminComments.isBlank()) {
-            j.setReviewComments(Sanitizer.sanitizeComment(adminComments));
+            j.setReviewComments(adminComments.trim());
         }
         // Actualizar asistencia a JUSTIFIED_ABSENCE, sin pago
         Attendance attendance = j.getAttendance();
@@ -141,7 +123,7 @@ public class JustificationServiceImpl implements JustificationService {
                 .orElseThrow(() -> new BusinessException("JUSTIFICATION_NOT_FOUND", "Justificación no encontrada"));
         j.setStatus(JustificationStatus.REJECTED);
         if (adminComments != null && !adminComments.isBlank()) {
-            j.setReviewComments(Sanitizer.sanitizeComment(adminComments));
+            j.setReviewComments(adminComments.trim());
         }
         Attendance attendance = j.getAttendance();
         if (attendance != null) {

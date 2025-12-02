@@ -111,8 +111,7 @@ public class PayrollController {
                 addRow(table, "Faltas", String.valueOf(d.getAbsentDays()), sectionFont, normalFont);
                 addRow(table, "Vacaciones", String.valueOf(d.getVacationDays()), sectionFont, normalFont);
                 document.add(table);
-                java.util.Locale mx;
-                try { mx = java.util.Locale.of("es", "MX"); } catch (Exception e) { mx = new java.util.Locale("es", "MX"); }
+                java.util.Locale mx = java.util.Locale.forLanguageTag("es-MX");
                 java.text.NumberFormat cf = java.text.NumberFormat.getCurrencyInstance(mx);
                 com.lowagie.text.Paragraph amountsHeader = new com.lowagie.text.Paragraph("Importes", sectionFont);
                 amountsHeader.setSpacingBefore(4f);

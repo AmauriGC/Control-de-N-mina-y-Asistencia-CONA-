@@ -44,7 +44,6 @@ public class Justification {
     @Column(nullable = false)
     private DocumentType documentType;
 
-    @Column(length = 500)
     private String documentPath;
 
     @Enumerated(EnumType.STRING)

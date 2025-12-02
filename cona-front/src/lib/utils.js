@@ -5,9 +5,6 @@ export function cn(...inputs) {
     return twMerge(clsx(inputs))
 }
 
-// Formatea una fecha ISO (yyyy-MM-dd o yyyy-MM-ddTHH:mm:ss) sin desplazarla por zona horaria.
-// new Date('2025-11-27') interpreta la fecha en UTC y en zonas negativas puede mostrar el día anterior.
-// Para evitarlo, construimos la fecha con year, monthIndex, day en hora local.
 export function formatISODateLocal(dateStr, locale = 'es-ES', options) {
     if (!dateStr) return ''
     try {
@@ -19,4 +16,26 @@ export function formatISODateLocal(dateStr, locale = 'es-ES', options) {
     } catch (e) {
         return dateStr
     }
+}
+
+// Construye Date local desde 'YYYY-MM-DD' sin desplazamiento por zona horaria
+export function parseISODateLocal(dateStr) {
+    if (!dateStr) return null
+    try {
+        const base = String(dateStr).split('T')[0]
+        const [y, m, d] = base.split('-').map(Number)
+        if (!y || !m || !d) return new Date(dateStr)
+        return new Date(y, m - 1, d)
+    } catch {
+        return new Date(dateStr)
+    }
+}
+
+// Serializa Date local a 'YYYY-MM-DD'
+export function toISODateLocalString(date) {
+    if (!(date instanceof Date)) return ''
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
 }

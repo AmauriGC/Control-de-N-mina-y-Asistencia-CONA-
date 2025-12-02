@@ -147,7 +147,6 @@ export const attendanceService = {
       if (startDate) params.startDate = startDate
       if (endDate) params.endDate = endDate
 
-      console.log(`Calling paginated attendance for employee ${employeeId}, page ${page}, size ${size}`)
       const response = await axiosClient.get(`/attendance/employee/${employeeId}/paginated`, {
         params
       })

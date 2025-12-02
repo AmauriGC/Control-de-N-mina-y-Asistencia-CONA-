@@ -24,4 +24,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     Optional<Employee> findByUserId(Long userId);
     Optional<Employee> findByEmployeeKey(String employeeKey);
     boolean existsByWorkSchedule(WorkSchedule workSchedule);
+
+    // Contratos con fecha de fin entre hoy y el límite proporcionado
+    @Query("SELECT e FROM Employee e WHERE e.contractEndDate IS NOT NULL AND e.contractEndDate >= CURRENT_DATE AND e.contractEndDate <= :limit ORDER BY e.contractEndDate ASC")
+    List<Employee> findContractsExpiringSoon(@Param("limit") LocalDate limit);
 }

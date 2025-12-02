@@ -35,6 +35,7 @@ function EmployeeForm({onSave, onClose, editingEmployee, backendErrors}) {
 
     useEffect(() => {
         if (editingEmployee) {
+
             setFormData({
                 fullName: editingEmployee.fullName || "",
                 email: editingEmployee.email || "",
@@ -435,9 +436,9 @@ function EmployeeForm({onSave, onClose, editingEmployee, backendErrors}) {
                             <div className="space-y-2">
                                 <Label htmlFor="contractStartDate">Fecha Inicio Contrato *</Label>
                                 <Calendar
-                                    value={formData.contractStartDate ? new Date(formData.contractStartDate) : null}
-                                    onChange={(d) => {
-                                        const value = d ? d.toISOString().slice(0, 10) : "";
+                                    value={formData.contractStartDate || null}
+                                    onChange={(d, iso) => {
+                                        const value = iso || (d ? d.toISOString().slice(0, 10) : "");
                                         setFormData({
                                             ...formData,
                                             contractStartDate: value
@@ -450,9 +451,9 @@ function EmployeeForm({onSave, onClose, editingEmployee, backendErrors}) {
                             <div className="space-y-2">
                                 <Label htmlFor="contractEndDate">Fecha Fin Contrato *</Label>
                                 <Calendar
-                                    value={formData.contractEndDate ? new Date(formData.contractEndDate) : null}
-                                    onChange={(d) => {
-                                        const value = d ? d.toISOString().slice(0, 10) : "";
+                                    value={formData.contractEndDate || null}
+                                    onChange={(d, iso) => {
+                                        const value = iso || (d ? d.toISOString().slice(0, 10) : "");
                                         setFormData({
                                             ...formData,
                                             contractEndDate: value
@@ -460,7 +461,7 @@ function EmployeeForm({onSave, onClose, editingEmployee, backendErrors}) {
                                         contractEndDateField.onChange({target: {value}});
                                     }}
                                     disabled={submitting}
-                                    minDate={formData.contractStartDate ? new Date(formData.contractStartDate) : undefined}
+                                    minDate={formData.contractStartDate || undefined}
                                 />
                                 {contractEndDateField.showError &&
                                     <p className="text-sm text-red-500">{contractEndDateField.error}</p>}

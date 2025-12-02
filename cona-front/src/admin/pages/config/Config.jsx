@@ -22,6 +22,7 @@ import {Calendar, Clock, DollarSign, Plus, Save, SquarePen, Trash2} from "lucide
 import {alertConfig} from "@/lib/alert-config";
 import {makeRules, rulesLib, useBackendErrors, useFieldValidation} from "@/components/criteria/use-validation";
 import {systemConfigService} from "./service/configService";
+import { formatISODateLocal } from '@/lib/utils'
 import FieldError from '@/components/criteria/FieldError'
 
 const initialConfig = {
@@ -115,6 +116,16 @@ export default function ConfigPage() {
         rulesLib.required("Requerido"),
         rulesLib.positiveNumber("Debe ser positivo")
     ));
+
+    // Sync field values when backend config loads
+    useEffect(() => {
+        try {
+            isrField.setValue(String(config.isrFixed ?? 0));
+            imssField.setValue(String(config.imssFixed ?? 0));
+            bonoPuntualidadField.setValue(String(config.bonoPuntualidad ?? 0));
+            descuentoRetardoField.setValue(String(config.descuentoRetardo ?? 0));
+        } catch {}
+    }, [config.isrFixed, config.imssFixed, config.bonoPuntualidad, config.descuentoRetardo]);
 
     const numericInvalid = [
         bonoPuntualidadField,
@@ -385,11 +396,7 @@ export default function ConfigPage() {
                                     <TableRow key={holiday.id}>
                                         <TableCell className="font-medium">{holiday.name}</TableCell>
                                         <TableCell>
-                                            {new Date(holiday.date).toLocaleDateString("es-MX", {
-                                                year: "numeric",
-                                                month: "long",
-                                                day: "numeric",
-                                            })}
+                                            {formatISODateLocal(holiday?.date, 'es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}
                                         </TableCell>
                                         <TableCell>
                                             <Badge variant={holiday.type === "OBLIGATORY" ? "default" : "secondary"}>

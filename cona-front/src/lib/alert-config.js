@@ -3,6 +3,13 @@ import Swal from 'sweetalert2'
 const base = {
     confirmButtonText: 'Aceptar',
     buttonsStyling: false,
+    // Ensure SweetAlert is above Radix Dialog overlays and doesn't trap focus issues
+    target: document.body,
+    heightAuto: false,
+    scrollbarPadding: false,
+    stopKeydownPropagation: false,
+    allowOutsideClick: false,
+    allowEscapeKey: true,
     customClass: {
         popup: 'rounded-xl border border-border bg-card text-card-foreground',
         title: 'text-lg font-semibold',
@@ -11,6 +18,10 @@ const base = {
         cancelButton: 'bg-muted text-foreground hover:bg-muted/80 rounded-md px-4 py-2',
         actions: 'gap-3',
     },
+    didOpen: (el) => {
+        // Raise z-index above typical dialog overlays
+        el.parentElement.style.zIndex = '10000'
+    }
 }
 
 export const alertConfig = {
@@ -63,6 +74,7 @@ export const alertConfig = {
             showCloseButton,
             showConfirmButton: false,
             toast: true,
+            allowOutsideClick: true,
             customClass: {
                 popup: 'rounded-md border bg-background text-foreground shadow-lg p-4 pr-8',
                 title: 'text-sm font-semibold',
@@ -97,6 +109,8 @@ export const alertConfig = {
             showCancelButton: true,
             confirmButtonText: confirmText,
             cancelButtonText: cancelText,
+            reverseButtons: true,
+            focusCancel: true,
         })
         return res.isConfirmed
     },

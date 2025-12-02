@@ -26,7 +26,6 @@ export default function DashboardEmployee() {
 
   useEffect(() => {
     if (user?.id) {
-      console.log('Loading profile for user:', user.id)
       loadProfile()
     }
   }, [user])
@@ -34,14 +33,10 @@ export default function DashboardEmployee() {
   const loadProfile = async () => {
     try {
       setProfileLoading(true)
-      console.log('Fetching employee profile for user ID:', user.id)
       const response = await employeeService.getByUserId(user.id)
-      console.log('Profile response:', response)
       
       if (response.success) {
         setProfile(response.data)
-        console.log('Employee profile loaded:', response.data)
-        console.log('Employee ID:', response.data.id)
         
         // Cargar asistencia reciente, nómina y estadísticas
         loadRecentAttendance(response.data.id)
@@ -103,9 +98,7 @@ export default function DashboardEmployee() {
   const loadLatestPayroll = async (employeeId) => {
     try {
       setPayrollLoading(true)
-            console.log('Loading payroll for employee:', employeeId)
       const res = await payrollService.getLatestPayroll(employeeId)
-      console.log('Payroll response:', res)
       if (res.success) {
         setLatestPayroll(res.data)
       } else {
