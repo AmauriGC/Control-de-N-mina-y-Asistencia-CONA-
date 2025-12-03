@@ -77,35 +77,27 @@ public class DashboardService {
     }
 
 
-    // --- 4. TOTAL DE NÓMINA SEMANAL ---
-    public Double getCurrentWeekPayrollTotal() {
-
+    // --- 4. TOTAL DE NÓMINA QUINCENAL ---
+    private LocalDate[] calculateLastCompleteBiweeklyPeriod() {
         LocalDate today = LocalDate.now();
-
-        // Calcular inicio y fin de semana (lunes a domingo)
-        LocalDate weekStart = today.with(java.time.DayOfWeek.MONDAY);
-        LocalDate weekEnd = today.with(java.time.DayOfWeek.SUNDAY);
-
-        // Llamar al query del repositorio
-        Double total = payrollRepository.getWeeklyTotalPayroll(weekStart, weekEnd);
-
-        return total != null ? total : 0.0;
+        LocalDate currentMonday = today.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate referenceDate = LocalDate.of(2024, 1, 1); // Lunes de referencia
+        long weeksSinceReference = ChronoUnit.WEEKS.between(referenceDate, currentMonday);
+        long biweeklyPeriods = weeksSinceReference / 2;
+        if (biweeklyPeriods <= 0) {
+            return new LocalDate[]{referenceDate, referenceDate.plusDays(13)};
+        }
+        LocalDate lastPeriodStart = referenceDate.plusWeeks((biweeklyPeriods - 1) * 2);
+        LocalDate lastPeriodEnd = lastPeriodStart.plusDays(13);
+        return new LocalDate[]{lastPeriodStart, lastPeriodEnd};
     }
 
-
     public WeeklyPayrollDTO getWeeklyPayrollForDashboard() {
-
-        LocalDate today = LocalDate.now();
-        LocalDate weekStart = today.with(java.time.DayOfWeek.MONDAY);
-        LocalDate weekEnd = today.with(java.time.DayOfWeek.SUNDAY);
-
-        Double total = payrollRepository.getWeeklyTotalPayroll(weekStart, weekEnd);
-
-        return new WeeklyPayrollDTO(
-                weekStart,
-                weekEnd,
-                total != null ? total : 0.0
-        );
+        LocalDate[] period = calculateLastCompleteBiweeklyPeriod();
+        LocalDate startDate = period[0];
+        LocalDate endDate = period[1];
+        Double total = payrollRepository.getWeeklyTotalPayroll(startDate, endDate);
+        return new WeeklyPayrollDTO(startDate, endDate, total != null ? total : 0.0);
     }
 
     public List<WeeklyAttendanceDTO> getWeeklyAttendance() {

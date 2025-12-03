@@ -53,3 +53,4 @@ Thumbs.db
 *.class
 hs_err_pid*
 replay_pid*
+/uploads/

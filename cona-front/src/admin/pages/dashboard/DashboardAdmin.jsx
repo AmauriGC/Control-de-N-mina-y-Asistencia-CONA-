@@ -18,6 +18,9 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/auth/context/AuthContext";
 import { useEffect, useState } from "react";
 import { dashboardService } from "./service/dashboardService";
+import { alertConfig } from "@/lib/alert-config";
+import axiosClient from "@/kernel/axiosClient";
+import { API_ENDPOINTS } from "@/lib/endpoints";
 
 
 // fallback data in case API returns nothing (kept similar to previous look)
@@ -57,6 +60,7 @@ export default function DashboardAdmin() {
 
   const [attendanceData, setAttendanceData] = useState(FALLBACK_ATTENDANCE);
   const [overtimeData, setOvertimeData] = useState(FALLBACK_OVERTIME);
+  const [biweeklyPayroll, setBiweeklyPayroll] = useState({ totalPayroll: 0, periodStart: null, periodEnd: null });
 
   // --- Cargar datos de hoy ---
   useEffect(() => {
@@ -121,6 +125,24 @@ export default function DashboardAdmin() {
     loadDashboardData();
   }, []);
 
+  // --- Cargar nómina quincenal ---
+  useEffect(() => {
+    const loadBiweeklyPayroll = async () => {
+      try {
+        const res = await dashboardService.getWeeklyPayroll();
+        const data = res?.data ?? res;
+        setBiweeklyPayroll({
+          totalPayroll: data?.totalPayroll ?? 0,
+          periodStart: data?.periodStart ?? null,
+          periodEnd: data?.periodEnd ?? null,
+        });
+      } catch (error) {
+        setBiweeklyPayroll({ totalPayroll: 0, periodStart: null, periodEnd: null });
+      }
+    };
+    loadBiweeklyPayroll();
+  }, []);
+
 
   return (
     <div className="p-8 space-y-8 min-h-screen">
@@ -162,12 +184,18 @@ export default function DashboardAdmin() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Nómina Semanal</CardTitle>
+            <CardTitle className="text-sm font-medium">Nómina Quincenal</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">$285,400</div>
-            <p className="text-xs text-muted-foreground mt-1">MXN para 52 empleados</p>
+            <div className="text-3xl font-bold">
+              {`$${(biweeklyPayroll.totalPayroll || 0).toLocaleString('es-MX', { maximumFractionDigits: 2 })}`}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {biweeklyPayroll.periodStart && biweeklyPayroll.periodEnd
+                ? `${biweeklyPayroll.periodStart} a ${biweeklyPayroll.periodEnd}`
+                : 'Periodo no disponible'}
+            </p>
           </CardContent>
         </Card>
 
@@ -178,11 +206,40 @@ export default function DashboardAdmin() {
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
-4            </div>
-            <p className="text-xs text-muted-foreground mt-1">3 justificaciones, 2 contratos</p>
+              {(pendingJustifications?.length || 0) + (contractAlerts?.length || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {(pendingJustifications?.length || 0)} justificaciones, {(contractAlerts?.length || 0)} contratos
+            </p>
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span>Acciones de Nómina</span>
+            <DollarSign className="h-5 w-5 text-muted-foreground" />
+          </CardTitle>
+          <CardDescription>Generar y enviar la nómina más reciente a todos</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={async () => {
+              try {
+                const url = API_ENDPOINTS.PAYROLL.ADMIN_SEND_LATEST_ALL;
+                const res = await axiosClient.post(url);
+                const msg = res?.message || (res?.data && typeof res.data === 'string' ? res.data : 'Operación completada');
+                alertConfig.toastSuccess({ title: msg });
+              } catch (error) {
+                alertConfig.toastError({ title: error.message || "Error al enviar nóminas" });
+              }
+            }}
+          >
+            Generar y enviar nómina más reciente
+          </Button>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>

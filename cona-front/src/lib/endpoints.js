@@ -70,11 +70,13 @@ export const API_ENDPOINTS = {
         },
     },
     PAYROLL: {
-        LIST: "/api/payroll",
-        CALCULATE: "/api/payroll/calculate",
-        GET_BY_EMPLOYEE: "/api/payroll/employee/:employeeId",
-        GET_DETAIL: "/api/payroll/employee/:employeeId/detail",
-        GET_LATEST: "/api/payroll/employee/:employeeId/latest",
+        LIST: "/payroll",
+        CALCULATE: "/payroll/calculate",
+        GET_BY_EMPLOYEE: "/payroll/employee/:employeeId",
+        GET_DETAIL: "/payroll/employee/:employeeId/detail",
+        GET_LATEST: "/payroll/employee/:employeeId/latest",
+        ADMIN_DOWNLOAD_LATEST_PDF: "/payroll/admin/employee/:employeeId/latest/pdf",
+        ADMIN_SEND_LATEST_ALL: "/payroll/admin/send-latest-all",
     },
     DASHBOARD: {
         TODAY: "/dashboard/today",

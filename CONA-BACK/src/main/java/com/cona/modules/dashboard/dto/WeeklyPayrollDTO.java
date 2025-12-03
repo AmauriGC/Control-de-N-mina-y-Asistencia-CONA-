@@ -11,11 +11,9 @@ import java.time.LocalDate;
 @Setter
 @AllArgsConstructor
 public class WeeklyPayrollDTO {
-    private LocalDate weekStart;
-    private LocalDate weekEnd;
+    private LocalDate periodStart;
+    private LocalDate periodEnd;
     private Double totalPayroll;
-
-
 }
 
 

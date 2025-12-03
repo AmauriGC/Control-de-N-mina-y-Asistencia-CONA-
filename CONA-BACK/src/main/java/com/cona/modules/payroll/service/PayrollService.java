@@ -62,8 +62,16 @@ public class PayrollService {
                 .orElseThrow(() -> new BusinessException("EMPLOYEE_NOT_FOUND", "Empleado no encontrado"));
 
         PayrollConfig config = payrollConfigRepository.findAll().stream()
-                .findFirst()
-                .orElseThrow(() -> new BusinessException("PAYROLL_CONFIG_NOT_FOUND", "Configuración de nómina no encontrada"));
+            .findFirst()
+            .orElseGet(() -> {
+                // Crear configuración por defecto si no existe
+                PayrollConfig def = new PayrollConfig();
+                def.setLatePenalty(new BigDecimal("50.00"));
+                def.setBonusAmount(new BigDecimal("0.00"));
+                def.setIsrFixed(new BigDecimal("0.00"));
+                def.setImssFixed(new BigDecimal("0.00"));
+                return payrollConfigRepository.save(def);
+            });
 
         // ASEGURAR que todos los días tengan registro ANTES de consultar
         ensureAllDaysHaveAttendanceForEmployee(employee, periodStart, periodEnd);

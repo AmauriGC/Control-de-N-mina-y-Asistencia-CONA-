@@ -3,6 +3,9 @@ package com.cona.modules.payroll.controller;
 import com.cona.kernel.response.ApiResponse;
 import com.cona.kernel.response.FileDownloadResponse;
 import com.cona.modules.payroll.dto.PayrollDetailDto;
+import com.cona.modules.employees.entity.Employee;
+import com.cona.modules.employees.repository.EmployeeRepository;
+import com.cona.modules.notification.service.EmailService;
 import com.cona.modules.payroll.entity.Payroll;
 import com.cona.modules.payroll.service.PayrollService;
 import jakarta.validation.constraints.Positive;
@@ -25,6 +28,8 @@ import java.util.List;
 public class PayrollController {
 
     private final PayrollService payrollService;
+    private final EmailService emailService;
+    private final EmployeeRepository employeeRepository;
 
     private LocalDate[] calculateLastCompleteBiweeklyPeriod() {
         LocalDate today = LocalDate.now();
@@ -82,6 +87,69 @@ public class PayrollController {
         String base64 = Base64.getEncoder().encodeToString(pdfBytes);
         FileDownloadResponse file = new FileDownloadResponse(fileName, "application/pdf", base64, pdfBytes.length);
         return ApiResponse.success("PDF generado", file);
+    }
+
+    // Admin: descargar PDF de última nómina de un empleado
+    @GetMapping("/admin/employee/{employeeId}/latest/pdf")
+    public ApiResponse<FileDownloadResponse> adminDownloadLatestPayrollPdf(@PathVariable @Positive(message = "El ID debe ser positivo") Long employeeId) {
+        LocalDate[] period = calculateLastCompleteBiweeklyPeriod();
+        LocalDate startDate = period[0];
+        LocalDate endDate = period[1];
+        // Asegurar cálculo previo
+        payrollService.calculatePayroll(employeeId, startDate, endDate);
+        PayrollDetailDto detail = payrollService.getPayrollDetail(employeeId, startDate, endDate);
+        byte[] pdfBytes = PayrollPdfGenerator.generate(detail);
+        String fileName = String.format("nomina_%s_a_%s.pdf", startDate, endDate);
+        String base64 = Base64.getEncoder().encodeToString(pdfBytes);
+        FileDownloadResponse file = new FileDownloadResponse(fileName, "application/pdf", base64, pdfBytes.length);
+        return ApiResponse.success("PDF generado", file);
+    }
+
+    // Admin: generar y enviar la última nómina a todos los empleados por correo
+    @PostMapping("/admin/send-latest-all")
+    public ApiResponse<String> generateAndEmailLatestPayrollsForAllEmployees() {
+        LocalDate[] period = calculateLastCompleteBiweeklyPeriod();
+        LocalDate startDate = period[0];
+        LocalDate endDate = period[1];
+
+        List<Employee> employees = employeeRepository.findAll();
+        int sent = 0;
+        for (Employee emp : employees) {
+            try {
+                // Calcular/asegurar nómina
+                payrollService.calculatePayroll(emp.getId(), startDate, endDate);
+                PayrollDetailDto detail = payrollService.getPayrollDetail(emp.getId(), startDate, endDate);
+                byte[] pdfBytes = PayrollPdfGenerator.generate(detail);
+
+                // Construir cuerpo del correo usando plantilla existente
+                String body = """
+                        <p>Hola %s,</p>
+                        <p>Adjuntamos tu recibo de nómina más reciente correspondiente al período:</p>
+                        <p><strong>%s</strong> a <strong>%s</strong></p>
+                        <p>Pago neto: <strong>$%s</strong></p>
+                        <p>Si tienes dudas, contacta a Recursos Humanos.</p>
+                        <p>Saludos,<br/>Equipo CONA</p>
+                        """.formatted(
+                        emp.getFullName() != null ? emp.getFullName() : "",
+                        startDate,
+                        endDate,
+                        detail.getTotalSalary() != null ? detail.getTotalSalary() : java.math.BigDecimal.ZERO
+                );
+
+            // Enviar correo con PDF adjunto
+            String attachmentName = String.format("nomina_%s_a_%s.pdf", startDate, endDate);
+            emailService.sendEmailWithAttachment(
+                emp.getUser().getEmail(),
+                "Nómina más reciente - CONA",
+                body,
+                attachmentName,
+                pdfBytes,
+                "application/pdf"
+            );
+                sent++;
+            } catch (Exception ignored) { /* continuar con el siguiente empleado */ }
+        }
+        return ApiResponse.success("Correos enviados", String.format("Se enviaron %d de %d nóminas", sent, employees.size()));
     }
 
     static class PayrollPdfGenerator {

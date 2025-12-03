@@ -8,7 +8,9 @@ import {alertConfig} from "@/lib/alert-config";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table";
 import {Switch} from "@/components/ui/switch";
-import {Edit, Plus, Eye} from "lucide-react";
+import {Edit, Plus, Eye, FileDown} from "lucide-react";
+import axiosClient from "@/kernel/axiosClient";
+import { API_ENDPOINTS } from "@/lib/endpoints";
 import {employeeService} from "./service/employeeService";
 import EmployeeForm from "./EmployeeForm";
 
@@ -316,6 +318,33 @@ export default function EmployeesPage() {
                                                         }}
                                                     >
                                                         <Eye className="h-4 w-4"/>
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        title="Descargar última nómina (PDF)"
+                                                        onClick={async () => {
+                                                            try {
+                                                                const url = API_ENDPOINTS.PAYROLL.ADMIN_DOWNLOAD_LATEST_PDF.replace(":employeeId", employee.id);
+                                                                const res = await axiosClient.get(url);
+                                                                const payload = res?.data ?? res;
+                                                                const base64 = payload?.base64Data || payload?.base64 || payload?.data?.base64Data;
+                                                                const name = payload?.filename || payload?.fileName || payload?.data?.filename || `nomina_${employee.id}.pdf`;
+                                                                if (!base64) {
+                                                                    alertConfig.toastError({ title: "No se pudo generar el PDF" });
+                                                                    return;
+                                                                }
+                                                                const link = document.createElement('a');
+                                                                link.href = `data:application/pdf;base64,${base64}`;
+                                                                link.download = name;
+                                                                link.click();
+                                                                alertConfig.toastSuccess({ title: "PDF descargado" });
+                                                            } catch (error) {
+                                                                alertConfig.toastError({ title: error.message || "Error al descargar nómina" });
+                                                            }
+                                                        }}
+                                                    >
+                                                        <FileDown className="h-4 w-4" />
                                                     </Button>
                                                 </div>
                                             </TableCell>
