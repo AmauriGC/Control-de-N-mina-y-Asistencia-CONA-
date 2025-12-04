@@ -476,7 +476,7 @@ function VacationReviewForm({request, onApprove, onReject, onClose, backendError
             ) : (
                 <div className="space-y-2">
                     <label htmlFor="vacationComments" className="text-sm font-medium">
-                        Comentarios {request.action === "reject" ? "*" : "(opcional)"}
+                        Comentarios {request.action === "reject" ? "*" : ""}
                     </label>
                     <Textarea
                         id="vacationComments"

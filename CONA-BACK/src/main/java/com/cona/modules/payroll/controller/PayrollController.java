@@ -11,6 +11,9 @@ import com.cona.modules.payroll.service.PayrollService;
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -89,6 +92,22 @@ public class PayrollController {
         return ApiResponse.success("PDF generado", file);
     }
 
+    @GetMapping(value = "/employee/{employeeId}/latest/pdf/raw", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> downloadLatestPayrollPdfRaw(@PathVariable @Positive(message = "El ID debe ser positivo") Long employeeId) {
+        LocalDate[] period = calculateLastCompleteBiweeklyPeriod();
+        LocalDate startDate = period[0];
+        LocalDate endDate = period[1];
+        PayrollDetailDto detail = payrollService.getPayrollDetail(employeeId, startDate, endDate);
+        byte[] pdfBytes = PayrollPdfGenerator.generate(detail);
+        String fileName = String.format("nomina_%s_a_%s.pdf", startDate, endDate);
+        return ResponseEntity
+                .ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName)
+                .contentType(MediaType.APPLICATION_PDF)
+                .contentLength(pdfBytes.length)
+                .body(pdfBytes);
+    }
+
     // Admin: descargar PDF de última nómina de un empleado
     @GetMapping("/admin/employee/{employeeId}/latest/pdf")
     public ApiResponse<FileDownloadResponse> adminDownloadLatestPayrollPdf(@PathVariable @Positive(message = "El ID debe ser positivo") Long employeeId) {
@@ -103,6 +122,23 @@ public class PayrollController {
         String base64 = Base64.getEncoder().encodeToString(pdfBytes);
         FileDownloadResponse file = new FileDownloadResponse(fileName, "application/pdf", base64, pdfBytes.length);
         return ApiResponse.success("PDF generado", file);
+    }
+
+    @GetMapping(value = "/admin/employee/{employeeId}/latest/pdf/raw", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> adminDownloadLatestPayrollPdfRaw(@PathVariable @Positive(message = "El ID debe ser positivo") Long employeeId) {
+        LocalDate[] period = calculateLastCompleteBiweeklyPeriod();
+        LocalDate startDate = period[0];
+        LocalDate endDate = period[1];
+        payrollService.calculatePayroll(employeeId, startDate, endDate);
+        PayrollDetailDto detail = payrollService.getPayrollDetail(employeeId, startDate, endDate);
+        byte[] pdfBytes = PayrollPdfGenerator.generate(detail);
+        String fileName = String.format("nomina_%s_a_%s.pdf", startDate, endDate);
+        return ResponseEntity
+                .ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName)
+                .contentType(MediaType.APPLICATION_PDF)
+                .contentLength(pdfBytes.length)
+                .body(pdfBytes);
     }
 
     // Admin: generar y enviar la última nómina a todos los empleados por correo

@@ -48,7 +48,6 @@ public final class Sanitizer {
      */
     public static String sanitizeComment(String comment) {
         String sanitized = collapseSpaces(comment);
-        // Validar contra regex de descripción si se desea (opcional):
         if (sanitized != null && !sanitized.matches(Validations.DESCRIPTION_REGEX)) {
             // Si no cumple, limpiamos caracteres no permitidos básico y truncamos.
             sanitized = sanitized.replaceAll("[^a-zA-Z0-9\\s.,!?;:'\"()-]", "");

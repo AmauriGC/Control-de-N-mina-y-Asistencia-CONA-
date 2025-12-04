@@ -16,6 +16,7 @@ import { vacationsService } from '../service/vacationsService.js'
 import { useBackendErrors, useFieldValidation, makeRules, rulesLib } from '@/components/criteria/use-validation'
 import FieldError from '@/components/criteria/FieldError'
 import FieldHint from '@/components/criteria/FieldHint'
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 
 export default function VacationsEmployee() {
   const be = useBackendErrors()
@@ -426,25 +427,27 @@ function VacationRequestForm({ availableDays, weeklySalary, onClose, loadMyReque
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="startDate">Fecha de Inicio *</Label>
-            <Input 
-              id="startDate" 
-              type="date" 
-              value={formData.startDate} 
-              onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} 
-              min={new Date().toISOString().split('T')[0]} 
-              aria-invalid={startField.showError && !!startField.error}
+            <CalendarComponent
+              value={formData.startDate}
+              onChange={(dateObj, isoLocal) => {
+                setFormData({ ...formData, startDate: isoLocal });
+                startField.onChange({ target: { value: isoLocal } });
+              }}
+              minDate={new Date()}
+              className="mt-1"
             />
             {startField.showError && (<FieldError error={startField.error} backendError={be.getFieldError('startDate')} />)}
           </div>
           <div className="space-y-2">
             <Label htmlFor="endDate">Fecha de Fin *</Label>
-            <Input 
-              id="endDate" 
-              type="date" 
-              value={formData.endDate} 
-              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} 
-              min={formData.startDate || new Date().toISOString().split('T')[0]} 
-              aria-invalid={endField.showError && !!endField.error}
+            <CalendarComponent
+              value={formData.endDate}
+              onChange={(dateObj, isoLocal) => {
+                setFormData({ ...formData, endDate: isoLocal });
+                endField.onChange({ target: { value: isoLocal } });
+              }}
+              minDate={formData.startDate ? formData.startDate : new Date()}
+              className="mt-1"
             />
             {endField.showError && (<FieldError error={endField.error} backendError={be.getFieldError('endDate')} />)}
           </div>

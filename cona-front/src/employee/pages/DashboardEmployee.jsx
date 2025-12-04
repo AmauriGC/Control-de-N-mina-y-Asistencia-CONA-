@@ -64,7 +64,7 @@ export default function DashboardEmployee() {
       if (!res.success) {
         throw new Error(res.message || 'No se pudo descargar el PDF')
       }
-      const blob = new Blob([res.data], { type: 'application/pdf' })
+      const blob = res.data?.data instanceof Blob ? res.data.data : new Blob([res.data?.data || res.data], { type: 'application/pdf' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       const start = latestPayroll?.periodStart || ''

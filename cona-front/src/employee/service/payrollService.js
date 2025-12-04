@@ -17,11 +17,11 @@ export const payrollService = {
      */
     async downloadLatestPayrollPdf(employeeId) {
         try {
-            const blob = await axiosClient.get(`/payroll/employee/${employeeId}/latest/pdf`, {
+            const res = await axiosClient.get(`/payroll/employee/${employeeId}/latest/pdf/raw`, {
                 responseType: 'blob',
                 headers: { Accept: 'application/pdf' }
             })
-            return { success: true, data: blob }
+            return { success: true, data: res }
         } catch (error) {
             return { success: false, message: error.message, error }
         }

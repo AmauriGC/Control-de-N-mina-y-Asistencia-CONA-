@@ -48,7 +48,7 @@ export default function ChangePasswordPage() {
                     title: "Contraseña cambiada",
                     text: "Tu contraseña ha sido actualizada exitosamente"
                 });
-                await logout(); // Opcional: forzar logout para re-login
+                await logout();
                 navigate("/login");
             } else {
                 await alertConfig.toastError({

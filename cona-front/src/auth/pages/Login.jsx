@@ -12,15 +12,15 @@ import {tokenManager} from "@/auth/utils/tokenManager";
 import Logo from "@/components/Logo";
 import {makeRules, rulesLib, useFieldValidation} from "@/components/criteria/use-validation";
 import {auth, provider, signInWithPopup} from "../utils/firebaseConfig.js";
+import { Chrome } from "lucide-react";
 
 export default function LoginPage() {
     const [firebaseUser, setFirebaseUser] = useState(null);
 
     useEffect(() => {
-        const unsubscribe = auth.onAuthStateChanged((user) => {
+        return auth.onAuthStateChanged((user) => {
             setFirebaseUser(user);
         });
-        return unsubscribe;
     }, []);
 
     const {loginWithGoogle} = useAuth();
@@ -47,11 +47,6 @@ export default function LoginPage() {
             })();
         }
     }, [firebaseUser, loginWithGoogle, navigate]);
-
-    const getInitials = () => {
-        if (!firebaseUser || !firebaseUser.displayName) return "";
-        return firebaseUser.displayName.charAt(0).toUpperCase();
-    }
 
     const emailField = useFieldValidation(
         "",
@@ -166,30 +161,6 @@ export default function LoginPage() {
                         <p className="font-semibold">Cuentas de prueba:</p>
                         <p>Admin: 20233tn102@utez.edu.mx / Admin123.</p>
                         <p>Empleado: 20233tn092@utez.edu.mx / Empleado123.</p>
-                        <div className="flex gap-2 pt-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                    emailField.onChange("20233tn102@utez.edu.mx");
-                                    passwordField.onChange("Admin123.");
-                                }}
-                            >
-                                Autocompletar Admin
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                    emailField.onChange("20233tn092@utez.edu.mx");
-                                    passwordField.onChange("Empleado123.");
-                                }}
-                            >
-                                Autocompletar Empleado
-                            </Button>
-                        </div>
                         <Button
                             type="button"
                             variant="outline"
@@ -198,6 +169,7 @@ export default function LoginPage() {
                             onClick={loginWithGoogleHandler}
                         >
                             Iniciar con Google
+                            <Chrome className="w-4 h-4 ml-2" />
                         </Button>
                     </div>
                 </CardContent>

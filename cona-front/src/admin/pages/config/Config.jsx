@@ -18,7 +18,8 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import {Table, TableBody, TableCell, TableHead, TableHeader, TableRow} from "@/components/ui/table";
-import {Calendar, Clock, DollarSign, Plus, Save, SquarePen, Trash2} from "lucide-react";
+import {Calendar as CalendarIcon, Clock, DollarSign, Plus, Save, SquarePen, Trash2} from "lucide-react";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {alertConfig} from "@/lib/alert-config";
 import {makeRules, rulesLib, useBackendErrors, useFieldValidation} from "@/components/criteria/use-validation";
 import {systemConfigService} from "./service/configService";
@@ -318,7 +319,7 @@ export default function ConfigPage() {
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                            <Calendar className="h-5 w-5 text-primary"/>
+                            <CalendarIcon className="h-5 w-5 text-primary"/>
                             <div>
                                 <CardTitle>Días Festivos</CardTitle>
                                 <CardDescription>Días inhábiles del año</CardDescription>
@@ -618,15 +619,18 @@ function HolidayForm({editingHoliday, onClose, onSave, backendErrors}) {
                 )}
             </Field>
             <Field label="Fecha *">
-                <Input
-                    type="date"
+                {/* Sustituido Input tipo date por Calendar */}
+                <CalendarComponent
                     value={dateField.value}
-                    onChange={(e) => {
-                        setFormData({...formData, holidayDate: e.target.value});
-                        dateField.onChange(e);
+                    onChange={(dateObj, isoLocal) => {
+                        setFormData({ ...formData, holidayDate: isoLocal });
+                        // Mantener la integración con el hook de validación
+                        dateField.onChange({ target: { value: isoLocal } });
                     }}
-                    onBlur={dateField.onBlur}
-                    aria-invalid={dateField.showError && !!dateField.error}
+                    minDate={undefined}
+                    maxDate={undefined}
+                    disabled={false}
+                    className="mt-1"
                 />
                 {dateField.showError && dateField.error &&
                     <p className="text-[12px] text-destructive">{dateField.error}</p>}
@@ -647,7 +651,7 @@ function HolidayForm({editingHoliday, onClose, onSave, backendErrors}) {
             </Field>
             <Field label="Descripción">
                 <Input
-                    placeholder="Descripción opcional"
+                    placeholder="Descripción"
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                 />
@@ -788,7 +792,7 @@ function WorkScheduleForm({editingWorkSchedule, onClose, onSave, backendErrors})
             </Field>
             <Field label="Descripción">
                 <Input
-                    placeholder="Descripción opcional"
+                    placeholder="Descripción"
                     value={formData.description}
                     onChange={(e) => setFormData({...formData, description: e.target.value})}
                 />
