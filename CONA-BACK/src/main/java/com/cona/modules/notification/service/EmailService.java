@@ -5,6 +5,7 @@ import com.cona.kernel.utils.Sanitizer;
 import com.cona.kernel.utils.Validations;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class EmailService {
 
     private final JavaMailSender mailSender;
@@ -40,13 +42,13 @@ public class EmailService {
 
             // HTML template minimalista CONA
             String htmlTemplate = """
-                    <table width='100%%' cellpadding='0' cellspacing='0' 
+                    <table width='100%%' cellpadding='0' cellspacing='0'
                            style='font-family: Arial, sans-serif; background-color:#AFC2C3; padding:30px 0;'>
                         <tr>
                             <td align='center'>
                                 <table width='600' cellpadding='0' cellspacing='0'
                                        style='background-color:#ffffff; border-radius:6px;'>
-                                    
+
                                     <!-- Header -->
                                     <tr>
                                         <td style='background-color:#709486; padding:18px; text-align:center;'>
@@ -65,9 +67,9 @@ public class EmailService {
 
                                     <!-- Footer -->
                                     <tr>
-                                        <td style='padding:18px; text-align:center; font-size:11px; 
+                                        <td style='padding:18px; text-align:center; font-size:11px;
                                                    color:#555555; background-color:#f7f7f7;'>
-                                            Este correo fue generado automáticamente por el sistema CONA. 
+                                            Este correo fue generado automáticamente por el sistema CONA.
                                             No respondas a este mensaje.
                                         </td>
                                     </tr>
@@ -82,6 +84,8 @@ public class EmailService {
             mailSender.send(mimeMessage);
 
         } catch (Exception e) {
+            // Log detallado para diagnóstico (pero no exponerlo al cliente)
+            log.error("Fallo al enviar correo a {}: {}", to, e.getMessage(), e);
             throw new BusinessException("EMAIL_SEND_FAILED", "No se pudo enviar el correo");
         }
     }
@@ -93,10 +97,10 @@ public class EmailService {
         String body = """
                 <p>Hola,</p>
                 <p>Has solicitado restablecer tu contraseña para CONA.</p>
-                
+
                 <p>Haz clic en el siguiente enlace para restablecer tu contraseña:</p>
                 <p><a href="%s" style="color:#709486; font-weight:bold;">Restablecer contraseña</a></p>
-                
+
                 <p>Si no solicitaste este cambio, puedes ignorar este mensaje.</p>
                 <p>Saludos,<br/>Equipo CONA</p>
                 """.formatted(resetUrl);
@@ -123,13 +127,13 @@ public class EmailService {
             helper.setSubject(safeSubject != null ? safeSubject : "");
 
             String htmlTemplate = """
-                    <table width='100%%' cellpadding='0' cellspacing='0' 
+                    <table width='100%%' cellpadding='0' cellspacing='0'
                            style='font-family: Arial, sans-serif; background-color:#AFC2C3; padding:30px 0;'>
                         <tr>
                             <td align='center'>
                                 <table width='600' cellpadding='0' cellspacing='0'
                                        style='background-color:#ffffff; border-radius:6px;'>
-                                    
+
                                     <tr>
                                         <td style='background-color:#709486; padding:18px; text-align:center;'>
                                             <h2 style='color:#ffffff; margin:0; font-size:20px; font-weight:600;'>
@@ -145,9 +149,9 @@ public class EmailService {
                                     </tr>
 
                                     <tr>
-                                        <td style='padding:18px; text-align:center; font-size:11px; 
+                                        <td style='padding:18px; text-align:center; font-size:11px;
                                                    color:#555555; background-color:#f7f7f7;'>
-                                            Este correo fue generado automáticamente por el sistema CONA. 
+                                            Este correo fue generado automáticamente por el sistema CONA.
                                             No respondas a este mensaje.
                                         </td>
                                     </tr>
@@ -167,6 +171,7 @@ public class EmailService {
 
             mailSender.send(mimeMessage);
         } catch (Exception e) {
+            log.error("Fallo al enviar correo con adjunto a {}: {}", to, e.getMessage(), e);
             throw new BusinessException("EMAIL_SEND_FAILED", "No se pudo enviar el correo");
         }
     }
