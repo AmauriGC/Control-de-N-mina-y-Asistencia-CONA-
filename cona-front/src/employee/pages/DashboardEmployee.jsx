@@ -45,7 +45,7 @@ export default function DashboardEmployee() {
       } else {
         console.error('Failed to load profile:', response.message)
         if (response.message) {
-          alertConfig.toastError({ title: "Error", text: response.message })
+          alertConfig.toastError({ title: "Error", text: response.message, error: response })
         }
       }
     } catch (error) {
@@ -76,7 +76,7 @@ export default function DashboardEmployee() {
       a.remove()
       window.URL.revokeObjectURL(url)
     } catch (e) {
-      alertConfig.toastError({ title: 'Error', text: e.message || 'Error al descargar PDF' })
+      alertConfig.toastError({ title: 'Error', text: e.message || 'Error al descargar PDF', error: e })
     } finally {
       setDownloadingPdf(false)
     }

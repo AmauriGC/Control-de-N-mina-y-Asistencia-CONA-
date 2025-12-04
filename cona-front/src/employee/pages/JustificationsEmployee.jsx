@@ -189,7 +189,7 @@ export default function JustificationsEmployee() {
                                                     if (res.success) {
                                                         setViewer({open: true, url: res.url, type: res.type})
                                                     } else {
-                                                        alertConfig.toastError({title: 'Error', text: res.message})
+                                                        alertConfig.toastError({title: 'Error', text: res.message, error: res})
                                                     }
                                                 }}>Ver documento</Button>
                                             ) : (
@@ -306,7 +306,7 @@ function JustificationForm({absence, employeeId, onClose, onSubmitted}) {
             }
         } else {
             be.setFromList(res.errors || [])
-            await alertConfig.toastError({title: 'Error', text: res.message})
+            await alertConfig.toastError({title: 'Error', text: res.message, error: res})
         }
     };
 

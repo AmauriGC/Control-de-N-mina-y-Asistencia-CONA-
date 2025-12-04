@@ -88,7 +88,7 @@ export default function EmployeesPage() {
                     setEditingEmployee(null);
                     loadEmployees();
                 } else {
-                    alertConfig.toastError({title: response.message});
+                    alertConfig.toastError({title: response.message, error: response});
                 }
             } else {
                 alertConfig.toastSuccess({title: editingEmployee ? "Empleado actualizado" : "Empleado registrado"});
@@ -97,7 +97,7 @@ export default function EmployeesPage() {
                 loadEmployees();
             }
         } catch (error) {
-            alertConfig.toastError({title: error.message});
+            alertConfig.toastError({title: error.message, error});
         }
     };
 

@@ -63,13 +63,13 @@ export default function AttendanceCheckIn() {
           text: hasBoth ? completedMsg : message,
         })
       } else {
-        await alertConfig.toastError({ title: 'Error', text: result.message || 'Error al procesar la asistencia' })
+        await alertConfig.toastError({ title: 'Error', text: result.message || 'Error al procesar la asistencia', error: result })
       }
     } catch (error) {
       if (error?.status === 422 && error?.message) {
         await alertConfig.toastInfo({ title: 'Asistencia ya registrada', text: error.message })
       } else {
-        await alertConfig.toastError({ title: 'Error', text: 'Error al procesar la asistencia' })
+        await alertConfig.toastError({ title: 'Error', error, text: 'Error al procesar la asistencia' })
       }
     } finally {
       setLoading(false)

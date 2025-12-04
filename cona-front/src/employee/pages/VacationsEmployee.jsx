@@ -398,10 +398,14 @@ function VacationRequestForm({ availableDays, weeklySalary, onClose, loadMyReque
         onClose()
       } else {
         be.setFromList(res.errors || res.data || [])
-        await alertConfig.toastError({ title: 'Error', text: res.message })
+        await alertConfig.toastError({
+          title: 'Error',
+          text: res.message,
+          error: res,
+        })
       }
     } catch (error) {
-      await alertConfig.toastError({ title: 'Error', text: error.message })
+      await alertConfig.toastError({ title: 'Error', text: error.message, error })
     } finally {
       setSubmitting(false)
     }

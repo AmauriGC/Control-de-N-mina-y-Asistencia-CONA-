@@ -1,5 +1,52 @@
 import Swal from 'sweetalert2'
 
+// Helper para formatear mensajes de error provenientes del backend
+// Acepta distintos formatos: string, Error, objeto con {message, data}, array, etc.
+const formatErrorText = (input, fallback = '') => {
+    try {
+        if (!input && !fallback) return ''
+        if (!input) return String(fallback)
+
+        // Si es ya string
+        if (typeof input === 'string') return input
+
+        // Si es Error nativo
+        if (input instanceof Error) return input.message || String(fallback)
+
+        // Si viene un objeto con message/data
+        if (typeof input === 'object') {
+            const parts = []
+            const msg = input.message || input.error || input.title
+            if (msg) parts.push(String(msg))
+
+            const data = input.data ?? input.details ?? input.errors
+            if (data) {
+                // Normalizar data en array de textos
+                let items = []
+                if (Array.isArray(data)) {
+                    items = data
+                } else if (typeof data === 'object') {
+                    items = Object.values(data)
+                } else {
+                    items = [String(data)]
+                }
+                // Aplanar arrays anidados y limpiar vacíos
+                const cleanItems = items.flat(Infinity).filter(Boolean).map(x => String(x).trim())
+                if (cleanItems.length) parts.push(cleanItems.join('\n'))
+            }
+
+            // Si no hubo partes, caer al fallback
+            if (!parts.length && fallback) parts.push(String(fallback))
+            return parts.join('\n')
+        }
+
+        // Tipo desconocido, intentar stringify
+        return String(input)
+    } catch (e) {
+        return String(fallback || 'Ocurrió un error')
+    }
+}
+
 const base = {
     confirmButtonText: 'Aceptar',
     buttonsStyling: false,
@@ -34,13 +81,14 @@ export const alertConfig = {
             showConfirmButton
         })
     },
-    error({title = 'Error', text = ''} = {}) {
+    error({title = 'Error', text = '', error} = {}) {
+        const formatted = formatErrorText(error ?? text, text)
         return Swal.fire({
             ...base,
             icon: 'error',
             iconColor: 'var(--color-destructive)',
             title,
-            text,
+            text: formatted,
             confirmButtonText: 'Entendido'
         })
     },
@@ -61,7 +109,11 @@ export const alertConfig = {
               position = 'bottom-end',
               timer = 2000,
               showCloseButton = true,
+              // Permitir pasar error directamente para formatear en toasts si aplica
+              error,
           } = {}) {
+        // Solo formatear automáticamente en toasts de error; para otros íconos mantener texto tal cual
+        const finalText = icon === 'error' ? formatErrorText(error ?? text, text) : text
         return Swal.fire({
             // no heredamos heightAuto/allowOutsideClick del base porque son incompatibles con toasts
             confirmButtonText: base.confirmButtonText,
@@ -72,7 +124,7 @@ export const alertConfig = {
             allowEscapeKey: true,
             icon,
             title,
-            text,
+            text: finalText,
             position,
             timer,
             showCloseButton,
@@ -90,6 +142,7 @@ export const alertConfig = {
         return this.toast({icon: 'success', ...opts})
     },
     toastError(opts = {}) {
+        // Aceptar opts.error o construir desde opts.text y formatear
         return this.toast({icon: 'error', ...opts})
     },
     toastInfo(opts = {}) {

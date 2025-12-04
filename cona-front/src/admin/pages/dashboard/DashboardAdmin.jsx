@@ -232,7 +232,7 @@ export default function DashboardAdmin() {
                 const msg = res?.message || (res?.data && typeof res.data === 'string' ? res.data : 'Operación completada');
                 alertConfig.toastSuccess({ title: msg });
               } catch (error) {
-                alertConfig.toastError({ title: error.message || "Error al enviar nóminas" });
+                alertConfig.toastError({ title: error.message || "Error al enviar nóminas", error });
               }
             }}
           >
