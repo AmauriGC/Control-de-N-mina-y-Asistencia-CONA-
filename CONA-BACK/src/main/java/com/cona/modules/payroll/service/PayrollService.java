@@ -178,6 +178,10 @@ public class PayrollService {
         PayrollCalculation calc = new PayrollCalculation();
         
         log.info("Calculating payroll for {} attendances", attendances.size());
+        // Si no hay asistencias en el periodo, marcar como no elegible para bono
+        if (attendances.isEmpty()) {
+            calc.hasBonusPenalties = true;
+        }
         
         for (Attendance attendance : attendances) {
             log.info("Processing attendance for date {} with status {}", attendance.getDate(), attendance.getStatus());
@@ -267,21 +271,30 @@ public class PayrollService {
                 .add(calc.absentDaysSalary)
                 .add(calc.lateDaysSalary);
         
-        // Calcular bono
-        if (!calc.hasBonusPenalties) {
-            calc.bonus = config.getBonusAmount();
+        // Regla 1: Si la nómina/base es 0, no hay bonos ni descuentos
+        if (calc.baseSalary.compareTo(BigDecimal.ZERO) == 0) {
+            log.info("Base salary is 0; setting bonus and deductions to 0");
+            calc.bonus = BigDecimal.ZERO;
+            calc.isrDeduction = BigDecimal.ZERO;
+            calc.imssDeduction = BigDecimal.ZERO;
+            calc.totalDeductions = BigDecimal.ZERO;
+            calc.totalSalary = BigDecimal.ZERO;
+            // También marcar como no elegible para bono en este periodo
+            calc.hasBonusPenalties = true;
+        } else {
+            // Calcular bono solo si no hay faltas, rechazos o retardos
+            if (!calc.hasBonusPenalties) {
+                calc.bonus = config.getBonusAmount();
+            }
+            // Calcular salario bruto (base + bono)
+            BigDecimal grossSalary = calc.baseSalary.add(calc.bonus);
+            // Calcular descuentos ISR e IMSS (las penalizaciones por retardo ya se aplicaron directamente)
+            calc.isrDeduction = config.getIsrFixed();
+            calc.imssDeduction = config.getImssFixed();
+            calc.totalDeductions = calc.isrDeduction.add(calc.imssDeduction);
+            // Calcular salario neto (bruto - descuentos)
+            calc.totalSalary = grossSalary.subtract(calc.totalDeductions);
         }
-        
-        // Calcular salario bruto (base + bono)
-        BigDecimal grossSalary = calc.baseSalary.add(calc.bonus);
-        
-        // Calcular descuentos ISR e IMSS (las penalizaciones por retardo ya se aplicaron directamente)
-        calc.isrDeduction = config.getIsrFixed();
-        calc.imssDeduction = config.getImssFixed();
-        calc.totalDeductions = calc.isrDeduction.add(calc.imssDeduction);
-        
-        // Calcular salario neto (bruto - descuentos)
-        calc.totalSalary = grossSalary.subtract(calc.totalDeductions);
         
         return calc;
     }
