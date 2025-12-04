@@ -5,10 +5,8 @@ const base = {
     buttonsStyling: false,
     // Ensure SweetAlert is above Radix Dialog overlays and doesn't trap focus issues
     target: document.body,
-    heightAuto: false,
     scrollbarPadding: false,
     stopKeydownPropagation: false,
-    allowOutsideClick: false,
     allowEscapeKey: true,
     customClass: {
         popup: 'rounded-xl border border-border bg-card text-card-foreground',
@@ -65,7 +63,13 @@ export const alertConfig = {
               showCloseButton = true,
           } = {}) {
         return Swal.fire({
-            ...base,
+            // no heredamos heightAuto/allowOutsideClick del base porque son incompatibles con toasts
+            confirmButtonText: base.confirmButtonText,
+            buttonsStyling: base.buttonsStyling,
+            target: document.body,
+            scrollbarPadding: false,
+            stopKeydownPropagation: false,
+            allowEscapeKey: true,
             icon,
             title,
             text,
@@ -74,7 +78,6 @@ export const alertConfig = {
             showCloseButton,
             showConfirmButton: false,
             toast: true,
-            allowOutsideClick: true,
             customClass: {
                 popup: 'rounded-md border bg-background text-foreground shadow-lg p-4 pr-8',
                 title: 'text-sm font-semibold',

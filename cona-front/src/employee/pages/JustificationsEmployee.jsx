@@ -229,6 +229,7 @@ export default function JustificationsEmployee() {
                 <DialogContent className="max-w-3xl w-[95vw]">
                     <DialogHeader>
                         <DialogTitle>Documento de Justificación</DialogTitle>
+                        <DialogDescription>Vista previa del documento subido por el empleado.</DialogDescription>
                     </DialogHeader>
                     <div className="mt-2">
                         {viewer.type === 'application/pdf' ? (
