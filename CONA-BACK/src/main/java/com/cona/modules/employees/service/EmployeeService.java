@@ -10,6 +10,7 @@ import com.cona.modules.employees.controller.dto.EmployeeResponseDto;
 import com.cona.modules.employees.entity.Employee;
 import com.cona.modules.employees.enums.EmployeeStatus;
 import com.cona.modules.employees.repository.EmployeeRepository;
+import com.cona.modules.notification.service.EmailService;
 import com.cona.modules.system_config.entity.WorkSchedule;
 import com.cona.modules.system_config.repository.WorkScheduleRepository;
 import jakarta.transaction.Transactional;
@@ -29,6 +30,7 @@ public class EmployeeService {
     private final UserRepository userRepository;
     private final WorkScheduleRepository workScheduleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     @Transactional
     public EmployeeResponseDto register(EmployeeRequestDto dto) {
@@ -85,6 +87,7 @@ public class EmployeeService {
         employee.setWorkSchedule(workSchedule);
 
         employeeRepository.save(employee);
+        emailService.sendWelcomeEmail(employee.getUser().getEmail(), "Bienvenido a CONA", employee.getEmployeeKey(), pass);
 
         return toDto(employee);
     }

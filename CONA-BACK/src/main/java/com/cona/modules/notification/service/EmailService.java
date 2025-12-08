@@ -90,6 +90,23 @@ public class EmailService {
         }
     }
 
+    public void sendWelcomeEmail(String to, String subject, String employeeKey, String password) {
+        String body = """
+                <p>Hola,</p>
+                <p>Bienvenido a CONA. Tu cuenta ha sido creada exitosamente.</p>
+
+                <p>Tu numero de empleado es: <strong>%s</strong></p>
+                <p><strong>Para iniciar sesion en el sistema<strong></p>
+                <p>Correo electronico: <strong>%s</strong></p>
+                <p>Contraseña: <strong>%s</strong></p>
+
+
+                <p>Saludos,<br/>Equipo CONA</p>
+                """.formatted(employeeKey, to, password);
+
+        sendEmail(to, subject, body);
+    }
+
     public void sendPasswordResetEmail(String to, String resetUrl) {
         String subject = "Restablecimiento de Contraseña - CONA";
 
