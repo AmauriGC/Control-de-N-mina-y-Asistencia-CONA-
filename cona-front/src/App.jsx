@@ -30,9 +30,6 @@ function App() {
                     <Route path="/forgot-password" element={<ForgotPassword/>}/>
                     <Route path="/reset-password" element={<ResetPassword/>}/>
                     <Route path="/attendance-terminal" element={<AttendanceTerminal/>}/>
-                    {/* Alias en español */}
-                    <Route path="/terminal-asistencia" element={<AttendanceTerminal/>}/>
-
                     <Route
                         path="/dashboard"
                         element={

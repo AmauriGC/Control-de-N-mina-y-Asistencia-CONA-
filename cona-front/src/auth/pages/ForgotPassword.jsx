@@ -30,7 +30,7 @@ export default function ForgotPasswordPage() {
             if (result.success) {
                 await alertConfig.toastSuccess({
                     title: "Enlace enviado",
-                    text: "Si el correo existe, se envió un enlace de recuperación"
+                    text: result.message
                 });
             } else {
                 await alertConfig.toastError({

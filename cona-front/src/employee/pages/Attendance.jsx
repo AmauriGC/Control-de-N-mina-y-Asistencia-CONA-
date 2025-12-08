@@ -72,11 +72,11 @@ export default function AttendancePage() {
           setEffectiveEmployeeId(res.data.id)
           await loadAttendanceData(res.data.id)
         } else {
-          alertConfig.error('No se encontró un empleado asociado a este usuario')
+          await alertConfig.toastError({ title: 'Error', text: res?.message })
         }
-      } catch (e) {
-        console.error('Error fetching employee:', e)
-        alertConfig.error('Error al buscar información del empleado: ' + e.message)
+      } catch (error) {
+        console.error('Error fetching employee:', error)
+        await alertConfig.toastError({ title: 'Error', text: error.message })
       }
     }
     init()
@@ -100,7 +100,7 @@ export default function AttendancePage() {
         const rangeRes = await attendanceService.getEmployeeAttendanceRange(empId, startDate, endDate)
         if (!rangeRes.success) {
           be.setFromList(rangeRes.errors)
-          alertConfig.error(rangeRes.message)
+          await alertConfig.toastError({ title: 'Error', text: rangeRes.message })
           throw new Error(rangeRes.message)
         }
         const allData = rangeRes.data || []
@@ -128,14 +128,14 @@ export default function AttendancePage() {
         setCurrentPage(page)
       } else {
         be.setFromList(attendanceResult.errors || [])
-        alertConfig.error(attendanceResult.message)
+        await alertConfig.toastError({ title: 'Error', text: attendanceResult.message })
       }
 
       if (statsResult.success) {
         setStats(statsResult.data)
       }
     } catch (error) {
-      alertConfig.error(error.message)
+      await alertConfig.toastError({ title: 'Error', text: error.message })
     } finally {
       setLoading(false)
     }

@@ -4,22 +4,10 @@ export const attendanceService = {
   // Check-in/check-out (público - no requiere token)
   async checkInOut(employeeKey) {
     try {
-      const response = await axiosClient.post('/attendance/check-in-out', {
-        employeeKey
-      }, {
-        // No agregar token para este endpoint público
-        skipAuth: true
-      })
-      return {
-        success: response.success,
-        data: response.data,
-        message: response.message
-      }
+      const response = await axiosClient.post('/attendance/check-in-out', { employeeKey }, { skipAuth: true })
+      return { success: response.success, data: response.data, message: response.message }
     } catch (error) {
-      return {
-        success: false,
-        message: error.message || 'Error al procesar la asistencia'
-      }
+      return { success: false, message: error.message || 'Error al procesar la asistencia' }
     }
   },
 
@@ -27,62 +15,31 @@ export const attendanceService = {
   async getEmployeeAttendance(employeeId) {
     try {
       const response = await axiosClient.get(`/attendance/employee/${employeeId}`)
-      return {
-        success: response.success,
-        data: response.data,
-        message: response.message
-      }
+      return { success: response.success, data: response.data, message: response.message }
     } catch (error) {
-      const backendMsg = error.response?.data?.message
-      const backendErrors = error.response?.data?.data
-      return {
-        success: false,
-        message: backendMsg || error.message || 'Error al obtener la asistencia',
-        errors: Array.isArray(backendErrors) ? backendErrors : []
-      }
+      const backendErrors = error?.data
+      return { success: false, message: error.message || 'Error al obtener la asistencia', errors: Array.isArray(backendErrors) ? backendErrors : [] }
     }
   },
 
   // Obtener asistencia por rango de fechas
   async getEmployeeAttendanceRange(employeeId, startDate, endDate) {
     try {
-      // Usar el nuevo endpoint POST con body DTO
-      const response = await axiosClient.post(`/attendance/employee/${employeeId}/range`, {
-        startDate,
-        endDate
-      })
-      return {
-        success: response.success,
-        data: response.data,
-        message: response.message
-      }
+      const response = await axiosClient.post(`/attendance/employee/${employeeId}/range`, { startDate, endDate })
+      return { success: response.success, data: response.data, message: response.message }
     } catch (error) {
-      const backendMsg = error.response?.data?.message
-      const backendErrors = error.response?.data?.data // puede ser array según GlobalExceptionHandler
-      return {
-        success: false,
-        message: backendMsg || error.message || 'Error al obtener la asistencia',
-        errors: Array.isArray(backendErrors) ? backendErrors : []
-      }
+      const backendErrors = error?.data
+      return { success: false, message: error.message || 'Error al obtener la asistencia', errors: Array.isArray(backendErrors) ? backendErrors : [] }
     }
   },
 
   // Obtener estadísticas de asistencia
   async getEmployeeStats(employeeId, startDate, endDate) {
     try {
-      const response = await axiosClient.get(`/attendance/employee/${employeeId}/stats`, {
-        params: { startDate, endDate }
-      })
-      return {
-        success: response.success,
-        data: response.data,
-        message: response.message
-      }
+      const response = await axiosClient.get(`/attendance/employee/${employeeId}/stats`, { params: { startDate, endDate } })
+      return { success: response.success, data: response.data, message: response.message }
     } catch (error) {
-      return {
-        success: false,
-        message: error.message || 'Error al obtener las estadísticas'
-      }
+      return { success: false, message: error.message || 'Error al obtener las estadísticas' }
     }
   },
 
@@ -90,36 +47,19 @@ export const attendanceService = {
   async getTodayAttendance() {
     try {
       const response = await axiosClient.get('/attendance/today')
-      return {
-        success: response.success,
-        data: response.data,
-        message: response.message
-      }
+      return { success: response.success, data: response.data, message: response.message }
     } catch (error) {
-      return {
-        success: false,
-        message: error.message || 'Error al obtener la asistencia del día'
-      }
+      return { success: false, message: error.message || 'Error al obtener la asistencia del día' }
     }
-  }
-  ,
+  },
 
   // Obtener asistencia reciente por empleado
   async getRecentEmployeeAttendance(employeeId, limit = 4) {
     try {
-      const response = await axiosClient.get(`/attendance/employee/${employeeId}/recent`, {
-        params: { limit }
-      })
-      return {
-        success: response.success,
-        data: response.data,
-        message: response.message
-      }
+      const response = await axiosClient.get(`/attendance/employee/${employeeId}/recent`, { params: { limit } })
+      return { success: response.success, data: response.data, message: response.message }
     } catch (error) {
-      return {
-        success: false,
-        message: error.message || 'Error al obtener la asistencia reciente'
-      }
+      return { success: false, message: error.message || 'Error al obtener la asistencia reciente' }
     }
   },
 
@@ -127,16 +67,9 @@ export const attendanceService = {
   async getTodayCounts() {
     try {
       const response = await axiosClient.get('/attendance/today/counts')
-      return {
-        success: response.success,
-        data: response.data,
-        message: response.message
-      }
+      return { success: response.success, data: response.data, message: response.message }
     } catch (error) {
-      return {
-        success: false,
-        message: error.message || 'Error al obtener los conteos de asistencia'
-      }
+      return { success: false, message: error.message || 'Error al obtener los conteos de asistencia' }
     }
   },
 
@@ -147,22 +80,14 @@ export const attendanceService = {
       if (startDate) params.startDate = startDate
       if (endDate) params.endDate = endDate
 
-      const response = await axiosClient.get(`/attendance/employee/${employeeId}/paginated`, {
-        params
-      })
-      
-      return {
-        success: response.success !== undefined ? response.success : true,
-        data: response.data,
-        message: response.message
-      }
+      const response = await axiosClient.get(`/attendance/employee/${employeeId}/paginated`, { params })
+      return { success: response.success !== undefined ? response.success : true, data: response.data, message: response.message }
     } catch (error) {
-      console.error('Paginated attendance error:', error)
-      // Si es error 422, probablemente el empleado no existe
-      if (error.response?.status === 422) {
-        throw new Error(`Empleado con ID ${employeeId} no encontrado o inválido`)
+      const isNotFound = error?.status === 422
+      if (isNotFound) {
+        return { success: false, message: `Empleado con ID ${employeeId} no encontrado o inválido` }
       }
-      throw new Error(error.response?.data?.message || error.message || 'Error al obtener la asistencia paginada')
+      return { success: false, message: error.message || 'Error al obtener la asistencia paginada' }
     }
   }
 }

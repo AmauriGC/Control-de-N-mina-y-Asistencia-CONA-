@@ -12,7 +12,7 @@ import {tokenManager} from "@/auth/utils/tokenManager";
 import Logo from "@/components/Logo";
 import {makeRules, rulesLib, useFieldValidation} from "@/components/criteria/use-validation";
 import {auth, provider, signInWithPopup} from "../utils/firebaseConfig.js";
-import { Chrome } from "lucide-react";
+import {Chrome} from "lucide-react";
 
 export default function LoginPage() {
     const [firebaseUser, setFirebaseUser] = useState(null);
@@ -24,6 +24,7 @@ export default function LoginPage() {
     }, []);
 
     const {loginWithGoogle} = useAuth();
+
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -31,14 +32,14 @@ export default function LoginPage() {
             (async () => {
                 try {
                     const idToken = await firebaseUser.getIdToken();
-                    const backendResult = await loginWithGoogle(idToken);
-                    if (backendResult.success) {
-                        navigate(backendResult.user.role === "admin" ? "/dashboard/admin" : "/dashboard/employee", {replace: true});
+                    const response = await loginWithGoogle(idToken);
+                    if (response.success) {
+                        navigate(response.user.role === "admin" ? "/dashboard/admin" : "/dashboard/employee", {replace: true});
                     } else {
-                        console.error("Error en login backend:", backendResult.message);
+                        console.error("Error en login backend:", response.message);
                         alertConfig.toastError({
                             title: "Error",
-                            text: backendResult.message || "Error al iniciar sesión con Google"
+                            text: response.message
                         });
                     }
                 } catch (error) {
@@ -55,7 +56,9 @@ export default function LoginPage() {
             rulesLib.emailDomain(["utez.edu.mx", "cona.com", "gmail.com"], "Solo correos @utez.edu.mx, @cona.com o @gmail.com permitidos")
         )
     );
+
     const passwordField = useFieldValidation("", makeRules(rulesLib.required("La contraseña es obligatoria")));
+
     const [isLoading, setIsLoading] = useState(false);
     const {login, isAuthenticated, user} = useAuth();
 
@@ -73,20 +76,15 @@ export default function LoginPage() {
             return;
         }
         setIsLoading(true);
-        try {
-            const result = await login(emailField.value, passwordField.value);
-            if (result.success) {
-                await alertConfig.toastSuccess({title: "Bienvenido", text: "Inicio de sesión exitoso"});
-                const currentRole = tokenManager.getUser()?.role || user?.role;
-                navigate(currentRole === "admin" ? "/dashboard/admin" : "/dashboard/employee", {replace: true});
-            } else {
-                await alertConfig.toastError({title: "Error", text: result.message || "Credenciales incorrectas"});
-            }
-        } catch {
-            await alertConfig.toastError({title: "Error", text: "Ocurrió un error al iniciar sesión"});
-        } finally {
-            setIsLoading(false);
+        const result = await login(emailField.value, passwordField.value);
+        if (result.success) {
+            await alertConfig.toastSuccess({title: "Bienvenido", text: result.response.message});
+            const currentRole = tokenManager.getUser()?.role || user?.role;
+            navigate(currentRole === "admin" ? "/dashboard/admin" : "/dashboard/employee", {replace: true});
+        } else {
+            await alertConfig.toastError({title: "Error", text: result.message || "No se pudo iniciar sesión"})
         }
+        setIsLoading(false);
     };
 
     const loginWithGoogleHandler = async () => {
@@ -157,7 +155,7 @@ export default function LoginPage() {
                             {isLoading ? "Iniciando sesión..." : "Iniciar sesión"}
                         </Button>
                     </form>
-                    <div className="mt-6 space-y-3 text-xs text-muted-foreground">
+                    <div className="flex flex-col w-full text-xs text-muted-foreground gap-2">
                         <p className="font-semibold">Cuentas de prueba:</p>
                         <p>Admin: 20233tn102@utez.edu.mx / Admin123.</p>
                         <p>Empleado: 20233tn092@utez.edu.mx / Empleado123.</p>
@@ -169,8 +167,33 @@ export default function LoginPage() {
                             onClick={loginWithGoogleHandler}
                         >
                             Iniciar con Google
-                            <Chrome className="w-4 h-4 ml-2" />
+                            <Chrome className="w-4 h-4 ml-2"/>
                         </Button>
+
+                        <div className="flex gap-2 w-full justify-between">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    emailField.onChange("20233tn102@utez.edu.mx");
+                                    passwordField.onChange("Admin123.");
+                                }}
+                            >
+                                Autocompletar Admin
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    emailField.onChange("20233tn092@utez.edu.mx");
+                                    passwordField.onChange("Empleado123.");
+                                }}
+                            >
+                                Autocompletar Empleado
+                            </Button>
+                        </div>
                     </div>
                 </CardContent>
             </Card>

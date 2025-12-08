@@ -14,12 +14,11 @@ export const vacationsService = {
   createRequest: async (requestData) => {
     try {
       const userId = getUserId();
-      const response = await axiosClient.post(`/leave-requests/user/${userId}`, requestData);
-      return { success: response.success, data: response.data, message: response.message }
+      const res = await axiosClient.post(`/leave-requests/user/${userId}`, requestData);
+      return { success: res.success, data: res.data, message: res.message }
     } catch (error) {
-      const backendMsg = error.response?.data?.message
-      const backendErrors = error.response?.data?.data
-      return { success: false, message: backendMsg || error.message, errors: Array.isArray(backendErrors) ? backendErrors : [] }
+      const backendErrors = error?.data
+      return { success: false, message: error.message, errors: Array.isArray(backendErrors) ? backendErrors : [] }
     }
   },
 
@@ -27,24 +26,22 @@ export const vacationsService = {
   getMyRequests: async () => {
     try {
       const userId = getUserId();
-      const response = await axiosClient.get(`/leave-requests/user/${userId}/requests`);
-      return { success: response.success, data: response.data, message: response.message }
+      const res = await axiosClient.get(`/leave-requests/user/${userId}/requests`);
+      return { success: res.success, data: res.data, message: res.message }
     } catch (error) {
-      const backendMsg = error.response?.data?.message
-      const backendErrors = error.response?.data?.data
-      return { success: false, message: backendMsg || error.message, errors: Array.isArray(backendErrors) ? backendErrors : [] }
+      const backendErrors = error?.data
+      return { success: false, message: error.message, errors: Array.isArray(backendErrors) ? backendErrors : [] }
     }
   },
 
   // Get single vacation request
   getById: async (id) => {
     try {
-      const response = await axiosClient.get(`/leave-requests/${id}`);
-      return { success: response.success, data: response.data, message: response.message }
+      const res = await axiosClient.get(`/leave-requests/${id}`);
+      return { success: res.success, data: res.data, message: res.message }
     } catch (error) {
-      const backendMsg = error.response?.data?.message
-      const backendErrors = error.response?.data?.data
-      return { success: false, message: backendMsg || error.message, errors: Array.isArray(backendErrors) ? backendErrors : [] }
+      const backendErrors = error?.data
+      return { success: false, message: error.message, errors: Array.isArray(backendErrors) ? backendErrors : [] }
     }
   }
 };

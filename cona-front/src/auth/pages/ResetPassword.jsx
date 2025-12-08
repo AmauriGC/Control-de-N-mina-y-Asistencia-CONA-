@@ -46,7 +46,7 @@ export default function ResetPasswordPage() {
             if (result.success) {
                 await alertConfig.toastSuccess({
                     title: "Contraseña restablecida",
-                    text: "Tu contraseña ha sido cambiada exitosamente"
+                    text: result.message
                 });
                 navigate("/login");
             } else {

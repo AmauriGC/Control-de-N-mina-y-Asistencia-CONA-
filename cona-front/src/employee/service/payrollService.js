@@ -6,9 +6,10 @@ export const payrollService = {
      */
     async getLatestPayroll(employeeId) {
         try {
-            return await axiosClient.get(`/payroll/employee/${employeeId}/latest`)
+            const res = await axiosClient.get(`/payroll/employee/${employeeId}/latest`)
+            return { success: res.success, data: res.data, message: res.message }
         } catch (error) {
-            return error
+            return { success: false, message: error.message }
         }
     },
 
@@ -21,9 +22,10 @@ export const payrollService = {
                 responseType: 'blob',
                 headers: { Accept: 'application/pdf' }
             })
+            // El interceptor retorna el blob directamente como data
             return { success: true, data: res }
         } catch (error) {
-            return { success: false, message: error.message, error }
+            return { success: false, message: error.message }
         }
     },
 
@@ -32,12 +34,12 @@ export const payrollService = {
      */
     async getPayrollDetail(employeeId, periodStart, periodEnd) {
         try {
-            // Validación básica: fechas presentes y orden
             if (!employeeId) throw new Error('Empleado requerido')
             if (!periodStart || !periodEnd) throw new Error('Periodo requerido')
-            return await axiosClient.get(`/payroll/detail/${employeeId}`, { params: { periodStart, periodEnd } })
+            const res = await axiosClient.get(`/payroll/detail/${employeeId}`, { params: { periodStart, periodEnd } })
+            return { success: res.success, data: res.data, message: res.message }
         } catch (error) {
-            return error
+            return { success: false, message: error.message }
         }
     },
 
@@ -46,9 +48,10 @@ export const payrollService = {
      */
     async getEmployeePayrolls(employeeId) {
         try {
-            return await axiosClient.get(`/payroll/employee/${employeeId}`)
+            const res = await axiosClient.get(`/payroll/employee/${employeeId}`)
+            return { success: res.success, data: res.data, message: res.message }
         } catch (error) {
-            return error
+            return { success: false, message: error.message }
         }
     },
 
@@ -59,9 +62,10 @@ export const payrollService = {
         try {
             if (!employeeId) throw new Error('Empleado requerido')
             if (!periodStart || !periodEnd) throw new Error('Periodo requerido')
-            return await axiosClient.post(`/payroll/calculate/${employeeId}`, null, { params: { periodStart, periodEnd } })
+            const res = await axiosClient.post(`/payroll/calculate/${employeeId}`, null, { params: { periodStart, periodEnd } })
+            return { success: res.success, data: res.data, message: res.message }
         } catch (error) {
-            return error
+            return { success: false, message: error.message }
         }
     },
 
@@ -97,9 +101,10 @@ export const payrollService = {
      */
     async getEmployeePayrollHistory(employeeId, page = 0, size = 10) {
         try {
-            return await axiosClient.get(`/payroll/employee/${employeeId}`, { params: { page, size } })
+            const res = await axiosClient.get(`/payroll/employee/${employeeId}`, { params: { page, size } })
+            return { success: res.success, data: res.data, message: res.message }
         } catch (error) {
-            return error
+            return { success: false, message: error.message }
         }
     },
 

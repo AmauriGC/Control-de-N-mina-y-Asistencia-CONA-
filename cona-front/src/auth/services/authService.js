@@ -1,6 +1,6 @@
 import axiosClient from "../../kernel/axiosClient.js";
-import { tokenManager } from "../utils/tokenManager";
-import { API_ENDPOINTS } from "@/lib/endpoints";
+import {tokenManager} from "../utils/tokenManager";
+import {API_ENDPOINTS} from "@/lib/endpoints";
 
 function decodeJwtPayload(token) {
     try {
@@ -27,15 +27,15 @@ export const authService = {
                 email: credentials.email,
                 password: credentials.password,
             });
-
-            if (response.success && response.data) {
-                const { token, expiresAt } = response.data;
+            if (response) {
+                const {token, expiresAt} = response.data;
+                const message = response.message;
                 if (!token) {
-                    return { success: false, message: "Token no recibido" };
+                    return {success: false, message: message};
                 }
                 const payload = decodeJwtPayload(token);
                 if (!payload) {
-                    return { success: false, message: "Token inválido" };
+                    return {success: false, message: message};
                 }
                 const role = String(payload.role || "").toLowerCase();
                 const user = {
@@ -46,35 +46,27 @@ export const authService = {
                 };
                 tokenManager.setToken(token);
                 tokenManager.setUser(user);
-                return { success: true, user, token };
+                return {success: true, user, token, response};
             }
 
-            return {
-                success: false,
-                message: response.message || "Error al iniciar sesión",
-            };
+            return { success: false, message: 'Error de autenticación' };
         } catch (error) {
-            return {
-                success: false,
-                message: error.message || "Error al iniciar sesión",
-            };
+            return { success: false, message: error.message };
         }
     },
 
     loginWithGoogle: async (idToken) => {
         try {
-            const response = await axiosClient.post(API_ENDPOINTS.AUTH.LOGIN_GOOGLE, {
-                idToken,
-            });
+            const response = await axiosClient.post(API_ENDPOINTS.AUTH.LOGIN_GOOGLE, { idToken });
 
             if (response.success && response.data) {
-                const { token, expiresAt } = response.data;
+                const {token, expiresAt} = response.data;
                 if (!token) {
-                    return { success: false, message: "Token no recibido" };
+                    return {success: false, message: "Token no recibido"};
                 }
                 const payload = decodeJwtPayload(token);
                 if (!payload) {
-                    return { success: false, message: "Token inválido" };
+                    return {success: false, message: "Token inválido"};
                 }
                 const role = String(payload.role || "").toLowerCase();
                 const user = {
@@ -85,18 +77,12 @@ export const authService = {
                 };
                 tokenManager.setToken(token);
                 tokenManager.setUser(user);
-                return { success: true, user, token };
+                return {success: true, user, token, response};
             }
 
-            return {
-                success: false,
-                message: response.message || "Error al iniciar sesión con Google",
-            };
+            return { success: false, message: 'Error de autenticación' };
         } catch (error) {
-            return {
-                success: false,
-                message: error.message || "Error al iniciar sesión con Google",
-            };
+            return { success: false, message: error.message };
         }
     },
 
@@ -130,54 +116,28 @@ export const authService = {
 
     forgotPassword: async (email) => {
         try {
-            const response = await axiosClient.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email });
-            return {
-                success: response.success,
-                message: response.message,
-            };
+            const response = await axiosClient.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, {email});
+            return { success: response.success, message: response.message };
         } catch (error) {
-            return {
-                success: false,
-                message: error.message || "Error al enviar solicitud de recuperación",
-            };
+            return { success: false, message: error.message || "Error al enviar solicitud de recuperación" };
         }
     },
 
     resetPassword: async (token, newPassword, confirmPassword) => {
         try {
-            const response = await axiosClient.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
-                token,
-                newPassword,
-                confirmPassword,
-            });
-            return {
-                success: response.success,
-                message: response.message,
-            };
+            const response = await axiosClient.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, { token, newPassword, confirmPassword });
+            return { success: response.success, message: response.message };
         } catch (error) {
-            return {
-                success: false,
-                message: error.message || "Error al restablecer contraseña",
-            };
+            return { success: false, message: error.message || "Error al restablecer contraseña" };
         }
     },
 
     changePassword: async (currentPassword, newPassword, confirmPassword) => {
         try {
-            const response = await axiosClient.post(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, {
-                currentPassword,
-                newPassword,
-                confirmPassword,
-            });
-            return {
-                success: response.success,
-                message: response.message,
-            };
+            const response = await axiosClient.post(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, { currentPassword, newPassword, confirmPassword });
+            return { success: response.success, message: response.message };
         } catch (error) {
-            return {
-                success: false,
-                message: error.message || "Error al cambiar contraseña",
-            };
+            return { success: false, message: error.message || "Error al cambiar contraseña" };
         }
     },
 };

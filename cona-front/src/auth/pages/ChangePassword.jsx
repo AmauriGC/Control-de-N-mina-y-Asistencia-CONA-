@@ -46,7 +46,7 @@ export default function ChangePasswordPage() {
             if (result.success) {
                 await alertConfig.toastSuccess({
                     title: "Contraseña cambiada",
-                    text: "Tu contraseña ha sido actualizada exitosamente"
+                    text: result.message
                 });
                 await logout();
                 navigate("/login");

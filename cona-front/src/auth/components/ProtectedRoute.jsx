@@ -14,7 +14,6 @@ export function ProtectedRoute({ children, allowedRoles }) {
   useEffect(() => {
     if (!isAuthenticated) {
       navigate("/login", { replace: true });
-      return;
     }
   }, [isAuthenticated, user, allowedRoles, navigate]);
 
