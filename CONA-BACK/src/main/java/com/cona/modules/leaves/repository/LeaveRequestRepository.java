@@ -9,7 +9,9 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long> {
@@ -33,4 +35,15 @@ public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long
     List<LeaveRequest> findByEmployeeIdAndDateAndStatus(@Param("employeeId") Long employeeId,
                                                        @Param("checkDate") java.time.LocalDate checkDate,
                                                        @Param("status") LeaveStatus status);
+
+
+    @Query("SELECT lr FROM LeaveRequest lr " +
+            "WHERE lr.employee.id = :employeeId " +
+            "AND lr.status = :status " +
+            "AND :date BETWEEN lr.startDate AND lr.endDate")
+    Optional<LeaveRequest> findActiveLeaveOnDate(
+            Long employeeId,
+            LeaveStatus status,
+            LocalDate date
+    );
 }
